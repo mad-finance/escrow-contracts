@@ -38,44 +38,28 @@ contract EscrowTest is Test {
         uint256 bountyAmount = 123;
         helperAddMockToken();
         helperMintApproveTokens(bountyAmount, defaultSender);
-        uint256 newBountyId = escrow.deposit(
-            address(mockToken),
-            bountyAmount,
-            0,
-            10
-        );
+        uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
         assertTrue(newBountyId == 1);
-        (
-            uint256 amount,
-            uint32 length,
-            address sponsor,
-            uint32 start,
-            address token
-        ) = escrow.bounties(newBountyId);
+        (uint256 amount, address sponsor, address token) = escrow.bounties(
+            newBountyId
+        );
         assertTrue(token == address(mockToken));
         assertTrue(amount == bountyAmount);
         assertTrue(sponsor == defaultSender);
-        assertTrue(start == block.timestamp);
-        assertTrue(length == 10);
     }
 
     function testFailUnkownToken() public {
         uint256 bountyAmount = 123;
         mockToken.mint(defaultSender, bountyAmount);
         mockToken.approve(address(escrow), bountyAmount);
-        escrow.deposit(address(mockToken), bountyAmount, 0, 10);
+        escrow.deposit(address(mockToken), bountyAmount);
     }
 
     function testSettleBounty() public {
         uint256 bountyAmount = 123;
         helperAddMockToken();
         helperMintApproveTokens(bountyAmount, defaultSender);
-        uint256 newBountyId = escrow.deposit(
-            address(mockToken),
-            bountyAmount,
-            0,
-            10
-        );
+        uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
         vm.warp(block.timestamp + 10);
 
         address[] memory recipients = new address[](1);
@@ -93,7 +77,7 @@ contract EscrowTest is Test {
 
         helperMintApproveTokens(bountyAmount, newSponsor);
         vm.startPrank(newSponsor);
-        newBountyId = escrow.deposit(address(mockToken), bountyAmount, 0, 10);
+        newBountyId = escrow.deposit(address(mockToken), bountyAmount);
         vm.warp(block.timestamp + 10);
 
         escrow.settle(newBountyId, recipients);
@@ -101,33 +85,11 @@ contract EscrowTest is Test {
         vm.stopPrank();
     }
 
-    function testFailSettleBountyTooEarly() public {
-        uint256 bountyAmount = 123;
-        helperAddMockToken();
-        helperMintApproveTokens(bountyAmount, defaultSender);
-        uint256 newBountyId = escrow.deposit(
-            address(mockToken),
-            bountyAmount,
-            0,
-            10
-        );
-        vm.warp(block.timestamp + 9);
-
-        address[] memory recipients = new address[](1);
-        recipients[0] = address(1);
-        escrow.settle(newBountyId, recipients);
-    }
-
     function testFailSettleBountyBadArbiter() public {
         uint256 bountyAmount = 123;
         helperAddMockToken();
         helperMintApproveTokens(bountyAmount, defaultSender);
-        uint256 newBountyId = escrow.deposit(
-            address(mockToken),
-            bountyAmount,
-            0,
-            10
-        );
+        uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
         vm.warp(block.timestamp + 9);
 
         address[] memory recipients = new address[](1);
@@ -141,12 +103,7 @@ contract EscrowTest is Test {
         uint256 bountyAmount = 100000000;
         helperAddMockToken();
         helperMintApproveTokens(bountyAmount, defaultSender);
-        uint256 newBountyId = escrow.deposit(
-            address(mockToken),
-            bountyAmount,
-            0,
-            10
-        );
+        uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
         vm.warp(block.timestamp + 10);
 
         address[] memory recipients = new address[](2);
@@ -162,5 +119,23 @@ contract EscrowTest is Test {
         uint256 expected2 = (splits[1] * bountyAmount) / 100000;
         assertTrue(mockToken.balanceOf(recipients[0]) == expected1);
         assertTrue(mockToken.balanceOf(recipients[1]) == expected2);
+    }
+
+    function testFailClosedAccess() public {
+        uint256 bountyAmount = 100000000;
+        vm.startPrank(address(574839));
+        uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
+        vm.stopPrank();
+    }
+
+    function testOpenTheGates() public {
+        address newSender = address(574839);
+        uint256 bountyAmount = 100000000;
+        escrow.openTheGates();
+        helperAddMockToken();
+        helperMintApproveTokens(bountyAmount, newSender);
+        vm.startPrank(newSender);
+        uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
+        vm.stopPrank();
     }
 }

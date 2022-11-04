@@ -1,10 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 /**
- ______   ______   __  __   __   __   ______  __  __       
-/\  == \ /\  __ \ /\ \/\ \ /\ "-.\ \ /\__  _\/\ \_\ \      
-\ \  __< \ \ \/\ \\ \ \_\ \\ \ \-.  \\/_/\ \/\ \____ \     
- \ \_____\\ \_____\\ \_____\\ \_\\"\_\  \ \_\ \/\_____\    
-  \/_____/ \/_____/ \/_____/ \/_/ \/_/   \/_/  \/_____/    
  ______   ______   ______   ______   ______   __     __    
 /\  ___\ /\  ___\ /\  ___\ /\  == \ /\  __ \ /\ \  _ \ \   
 \ \  __\ \ \___  \\ \ \____\ \  __< \ \ \/\ \\ \ \/ ".\ \  
@@ -24,31 +19,29 @@ contract Escrow is IEscrow, Ownable {
     mapping(address => bool) private allowedTokens;
     mapping(address => bool) private allowedDepositors;
 
+    bool onlyAllowedDepositors = true;
+
     constructor() Ownable() {}
 
     // PUBLIC FUNCTIONS
-    function deposit(
-        address token,
-        uint256 amount,
-        uint32 start,
-        uint32 length
-    ) external override returns (uint256 bountyId) {
+
+    /**
+     * @notice desposits tokens creating an open bounty
+     * @param token token to deposit - must be allowed
+     * @param amount amount of token to deposit
+     */
+    function deposit(address token, uint256 amount)
+        external
+        override
+        returns (uint256 bountyId)
+    {
         if (!allowedTokens[token]) {
             revert TokenNotAllowed();
         }
-        if (!allowedDepositors[_msgSender()]) {
+        if (onlyAllowedDepositors && !allowedDepositors[_msgSender()]) {
             revert DepositorNotAllowed();
         }
-        if (start < block.timestamp) {
-            start = uint32(block.timestamp);
-        }
-        Bounty memory newBounty = Bounty(
-            amount,
-            length,
-            _msgSender(),
-            start,
-            token
-        );
+        Bounty memory newBounty = Bounty(amount, _msgSender(), token);
         bounties[++count] = newBounty;
         IERC20(token).transferFrom(_msgSender(), address(this), amount);
 
@@ -56,6 +49,11 @@ contract Escrow is IEscrow, Ownable {
         return count;
     }
 
+    /**
+     * @notice settles the bounty by splitting evenly between all recipients
+     * @param bountyId bounty to settle
+     * @param recipients list of addresses to disperse to
+     */
     function settle(uint256 bountyId, address[] calldata recipients)
         external
         override
@@ -64,9 +62,6 @@ contract Escrow is IEscrow, Ownable {
         Bounty memory bounty = bounties[bountyId];
         if (_msgSender() != owner() && _msgSender() != bounty.sponsor) {
             revert NotArbiter();
-        }
-        if (block.timestamp < bounty.start + bounty.bountyLength) {
-            revert EarlySettlement();
         }
 
         IERC20 token = IERC20(bounty.token);
@@ -80,6 +75,12 @@ contract Escrow is IEscrow, Ownable {
         emit BountySettled(bountyId, recipients);
     }
 
+    /**
+     * @notice settles the bounty by splitting between all recipients by percent
+     * @param bountyId bounty to settle
+     * @param recipients list of addresses to disperse to
+     * @param splits list of split amounts to go to each recipient, should add up to 100,000
+     */
     function rankedSettle(
         uint256 bountyId,
         address[] calldata recipients,
@@ -92,14 +93,11 @@ contract Escrow is IEscrow, Ownable {
         if (_msgSender() != owner() && _msgSender() != bounty.sponsor) {
             revert NotArbiter();
         }
-        if (block.timestamp < bounty.start + bounty.bountyLength) {
-            revert EarlySettlement();
-        }
 
         uint256 splitTotal;
         IERC20 token = IERC20(bounty.token);
         for (uint256 i = 0; i < recipients.length; ++i) {
-            uint256 recipSplit = (splits[i] * bounty.amount) / 100000;
+            uint256 recipSplit = (splits[i] * bounty.amount) / 100_000;
             splitTotal += recipSplit;
             token.transfer(recipients[i], recipSplit);
         }
@@ -113,6 +111,10 @@ contract Escrow is IEscrow, Ownable {
         emit BountySettled(bountyId, recipients);
     }
 
+    /**
+     * @notice can be called by owner to refund bounty in case of issue
+     * @param bountyId id of bounty to refund
+     */
     function refund(uint256 bountyId) external override onlyOwner {
         Bounty memory bounty = bounties[bountyId];
         IERC20(bounty.token).transfer(bounty.sponsor, bounty.amount);
@@ -123,6 +125,8 @@ contract Escrow is IEscrow, Ownable {
     }
 
     // ADMIN FUNCTIONS
+
+    /// @notice add list of tokens to allowlist
     function addAllowListTokens(address[] calldata _allowedTokens)
         external
         override
@@ -135,6 +139,7 @@ contract Escrow is IEscrow, Ownable {
         emit TokensAdded(_allowedTokens);
     }
 
+    /// @notice remove list of tokens from allowlist
     function removeAllowListTokens(address[] calldata _allowedTokens)
         external
         override
@@ -147,6 +152,7 @@ contract Escrow is IEscrow, Ownable {
         emit TokensRemoved(_allowedTokens);
     }
 
+    /// @notice add list of depositors to allowlist
     function addDepositors(address[] calldata _allowedDepositors)
         external
         override
@@ -159,6 +165,7 @@ contract Escrow is IEscrow, Ownable {
         emit DepositorsAdded(_allowedDepositors);
     }
 
+    /// @notice remove list of depositors from allowlist
     function removeDepositors(address[] calldata _allowedDepositors)
         external
         override
@@ -169,5 +176,12 @@ contract Escrow is IEscrow, Ownable {
         }
 
         emit DepositorsRemoved(_allowedDepositors);
+    }
+
+    /// @notice remove allowlist requirement for depositors
+    function openTheGates() external onlyOwner {
+        onlyAllowedDepositors = false;
+
+        emit OpenTheGates();
     }
 }

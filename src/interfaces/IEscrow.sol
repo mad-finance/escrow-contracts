@@ -4,9 +4,7 @@ pragma solidity ^0.8.13;
 interface IEscrow {
     struct Bounty {
         uint256 amount;
-        uint32 bountyLength;
         address sponsor;
-        uint32 start;
         address token;
     }
 
@@ -25,15 +23,15 @@ interface IEscrow {
 
     event DepositorsRemoved(address[] depositors);
 
+    event OpenTheGates();
+
     // BOUNTIES
     /**
         @dev deposit funds and create a new bounty
      */
     function deposit(
         address token,
-        uint256 amount,
-        uint32 start,
-        uint32 length
+        uint256 amount
     ) external returns (uint256 bountyId);
 
     /**
