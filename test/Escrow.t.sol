@@ -4,14 +4,15 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "../src/Escrow.sol";
 import "../src/mocks/MockToken.sol";
+import "../src/extensions/LensExtension.sol";
 
-contract EscrowTest is Test {
+contract EscrowTest is Test, DataTypes {
     Escrow escrow;
     MockToken mockToken;
     address defaultSender = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
 
     function setUp() public {
-        escrow = new Escrow();
+        escrow = new Escrow(address(4545454545));
         mockToken = new MockToken();
 
         address[] memory depositors = new address[](1);
@@ -65,7 +66,7 @@ contract EscrowTest is Test {
         address[] memory recipients = new address[](1);
         recipients[0] = address(1);
 
-        escrow.settle(newBountyId, recipients);
+        escrow.settle(newBountyId, recipients, new PostWithSigData[](0));
         assertTrue(mockToken.balanceOf(address(1)) == bountyAmount);
 
         // another address can settle as long as its the bounty creator
@@ -80,7 +81,7 @@ contract EscrowTest is Test {
         newBountyId = escrow.deposit(address(mockToken), bountyAmount);
         vm.warp(block.timestamp + 10);
 
-        escrow.settle(newBountyId, recipients);
+        escrow.settle(newBountyId, recipients, new PostWithSigData[](0));
         assertTrue(mockToken.balanceOf(address(1)) == bountyAmount * 2);
         vm.stopPrank();
     }
@@ -96,7 +97,7 @@ contract EscrowTest is Test {
         recipients[0] = address(1);
 
         vm.prank(address(5));
-        escrow.settle(newBountyId, recipients);
+        escrow.settle(newBountyId, recipients, new PostWithSigData[](0));
     }
 
     function testSettleRankedBounty() public {
@@ -113,7 +114,12 @@ contract EscrowTest is Test {
         uint256[] memory splits = new uint256[](2);
         splits[0] = 75000;
         splits[1] = 25000;
-        escrow.rankedSettle(newBountyId, recipients, splits);
+        escrow.rankedSettle(
+            newBountyId,
+            recipients,
+            splits,
+            new PostWithSigData[](0)
+        );
 
         uint256 expected1 = (splits[0] * bountyAmount) / 100000;
         uint256 expected2 = (splits[1] * bountyAmount) / 100000;

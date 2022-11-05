@@ -11,9 +11,9 @@ pragma solidity ^0.8.13;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/access/Ownable.sol";
-import "./interfaces/IEscrow.sol";
+import "./extensions/LensExtension.sol";
 
-contract Escrow is IEscrow, Ownable {
+contract Escrow is Ownable, LensExtension {
     uint256 private count;
     mapping(uint256 => Bounty) public bounties;
     mapping(address => bool) private allowedTokens;
@@ -21,7 +21,30 @@ contract Escrow is IEscrow, Ownable {
 
     bool onlyAllowedDepositors = true;
 
-    constructor() Ownable() {}
+    struct Bounty {
+        uint256 amount;
+        address sponsor;
+        address token;
+    }
+
+    // EVENTS
+    event BountyCreated(uint256 bountyId, Bounty bounty);
+    event BountySettled(uint256 bountyId, address[] recipients);
+    event BountyRefunded(uint256 bountyId);
+    event TokensAdded(address[] tokens);
+    event TokensRemoved(address[] tokens);
+    event DepositorsAdded(address[] depositors);
+    event DepositorsRemoved(address[] depositors);
+    event OpenTheGates();
+
+    // ERRORS
+    error EarlySettlement();
+    error NotArbiter();
+    error TokenNotAllowed();
+    error DepositorNotAllowed();
+    error InvalidSplits();
+
+    constructor(address _lensHub) Ownable() LensExtension(_lensHub) {}
 
     // PUBLIC FUNCTIONS
 
@@ -32,7 +55,6 @@ contract Escrow is IEscrow, Ownable {
      */
     function deposit(address token, uint256 amount)
         external
-        override
         returns (uint256 bountyId)
     {
         if (!allowedTokens[token]) {
@@ -54,10 +76,11 @@ contract Escrow is IEscrow, Ownable {
      * @param bountyId bounty to settle
      * @param recipients list of addresses to disperse to
      */
-    function settle(uint256 bountyId, address[] calldata recipients)
-        external
-        override
-    {
+    function settle(
+        uint256 bountyId,
+        address[] calldata recipients,
+        PostWithSigData[] calldata posts
+    ) external {
         uint256 split = 100000 / recipients.length;
         Bounty memory bounty = bounties[bountyId];
         if (_msgSender() != owner() && _msgSender() != bounty.sponsor) {
@@ -72,6 +95,8 @@ contract Escrow is IEscrow, Ownable {
 
         delete bounties[bountyId];
 
+        postWithSigBatch(posts);
+
         emit BountySettled(bountyId, recipients);
     }
 
@@ -84,8 +109,9 @@ contract Escrow is IEscrow, Ownable {
     function rankedSettle(
         uint256 bountyId,
         address[] calldata recipients,
-        uint256[] calldata splits
-    ) external override {
+        uint256[] calldata splits,
+        PostWithSigData[] calldata posts
+    ) external {
         if (recipients.length != splits.length) {
             revert InvalidSplits();
         }
@@ -108,6 +134,8 @@ contract Escrow is IEscrow, Ownable {
 
         delete bounties[bountyId];
 
+        postWithSigBatch(posts);
+
         emit BountySettled(bountyId, recipients);
     }
 
@@ -115,7 +143,7 @@ contract Escrow is IEscrow, Ownable {
      * @notice can be called by owner to refund bounty in case of issue
      * @param bountyId id of bounty to refund
      */
-    function refund(uint256 bountyId) external override onlyOwner {
+    function refund(uint256 bountyId) external onlyOwner {
         Bounty memory bounty = bounties[bountyId];
         IERC20(bounty.token).transfer(bounty.sponsor, bounty.amount);
 
@@ -129,7 +157,6 @@ contract Escrow is IEscrow, Ownable {
     /// @notice add list of tokens to allowlist
     function addAllowListTokens(address[] calldata _allowedTokens)
         external
-        override
         onlyOwner
     {
         for (uint8 i = 0; i < _allowedTokens.length; ++i) {
@@ -142,7 +169,6 @@ contract Escrow is IEscrow, Ownable {
     /// @notice remove list of tokens from allowlist
     function removeAllowListTokens(address[] calldata _allowedTokens)
         external
-        override
         onlyOwner
     {
         for (uint8 i = 0; i < _allowedTokens.length; ++i) {
@@ -155,7 +181,6 @@ contract Escrow is IEscrow, Ownable {
     /// @notice add list of depositors to allowlist
     function addDepositors(address[] calldata _allowedDepositors)
         external
-        override
         onlyOwner
     {
         for (uint8 i = 0; i < _allowedDepositors.length; ++i) {
@@ -168,7 +193,6 @@ contract Escrow is IEscrow, Ownable {
     /// @notice remove list of depositors from allowlist
     function removeDepositors(address[] calldata _allowedDepositors)
         external
-        override
         onlyOwner
     {
         for (uint8 i = 0; i < _allowedDepositors.length; ++i) {
