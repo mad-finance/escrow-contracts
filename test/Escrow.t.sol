@@ -101,9 +101,11 @@ contract EscrowTest is Test, DataTypes {
     }
 
     function testSettleRankedBounty() public {
-        uint256 bountyAmount = 100000000;
+        uint256 bountyAmount = 100_000_000;
         helperAddMockToken();
         helperMintApproveTokens(bountyAmount, defaultSender);
+        uint256 tokenAmountBefore = mockToken.balanceOf(defaultSender);
+
         uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
         vm.warp(block.timestamp + 10);
 
@@ -112,8 +114,8 @@ contract EscrowTest is Test, DataTypes {
         recipients[1] = address(124);
 
         uint256[] memory splits = new uint256[](2);
-        splits[0] = 75000;
-        splits[1] = 25000;
+        splits[0] = 75_000;
+        splits[1] = 25_000;
         escrow.rankedSettle(
             newBountyId,
             recipients,
@@ -121,14 +123,16 @@ contract EscrowTest is Test, DataTypes {
             new PostWithSigData[](0)
         );
 
-        uint256 expected1 = (splits[0] * bountyAmount) / 100000;
-        uint256 expected2 = (splits[1] * bountyAmount) / 100000;
+        uint256 expected1 = 75_000;
+        uint256 expected2 = 25_000;
+        uint256 expected3 = tokenAmountBefore - expected1 - expected2;
         assertTrue(mockToken.balanceOf(recipients[0]) == expected1);
         assertTrue(mockToken.balanceOf(recipients[1]) == expected2);
+        assertTrue(mockToken.balanceOf(defaultSender) == expected3);
     }
 
     function testFailClosedAccess() public {
-        uint256 bountyAmount = 100000000;
+        uint256 bountyAmount = 100_000_000;
         vm.startPrank(address(574839));
         uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
         vm.stopPrank();
@@ -136,7 +140,7 @@ contract EscrowTest is Test, DataTypes {
 
     function testOpenTheGates() public {
         address newSender = address(574839);
-        uint256 bountyAmount = 100000000;
+        uint256 bountyAmount = 100_000_000;
         escrow.openTheGates();
         helperAddMockToken();
         helperMintApproveTokens(bountyAmount, newSender);

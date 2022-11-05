@@ -123,14 +123,11 @@ contract Escrow is Ownable, LensExtension {
         uint256 splitTotal;
         IERC20 token = IERC20(bounty.token);
         for (uint256 i = 0; i < recipients.length; ++i) {
-            uint256 recipSplit = (splits[i] * bounty.amount) / 100_000;
-            splitTotal += recipSplit;
-            token.transfer(recipients[i], recipSplit);
+            token.transfer(recipients[i], splits[i]);
+            splitTotal += splits[i];
         }
 
-        if (splitTotal != bounty.amount) {
-            revert InvalidSplits();
-        }
+        token.transfer(bounty.sponsor, bounty.amount - splitTotal);
 
         delete bounties[bountyId];
 
