@@ -14,9 +14,9 @@ import "openzeppelin/access/Ownable.sol";
 import "./extensions/LensExtension.sol";
 
 contract Escrow is Ownable, LensExtension {
+    uint256 public protocolFee;
     uint256 private count;
     mapping(uint256 => Bounty) public bounties;
-    mapping(address => bool) private allowedTokens;
     mapping(address => bool) private allowedDepositors;
 
     bool onlyAllowedDepositors = true;
@@ -36,15 +36,20 @@ contract Escrow is Ownable, LensExtension {
     event DepositorsAdded(address[] depositors);
     event DepositorsRemoved(address[] depositors);
     event OpenTheGates();
+    event SetProtocolFee(uint256 protocolFee);
 
     // ERRORS
     error EarlySettlement();
     error NotArbiter();
-    error TokenNotAllowed();
     error DepositorNotAllowed();
     error InvalidSplits();
 
-    constructor(address _lensHub) Ownable() LensExtension(_lensHub) {}
+    constructor(address _lensHub, uint256 _protocolFee)
+        Ownable()
+        LensExtension(_lensHub)
+    {
+        protocolFee = _protocolFee;
+    }
 
     // PUBLIC FUNCTIONS
 
@@ -57,15 +62,14 @@ contract Escrow is Ownable, LensExtension {
         external
         returns (uint256 bountyId)
     {
-        if (!allowedTokens[token]) {
-            revert TokenNotAllowed();
-        }
         if (onlyAllowedDepositors && !allowedDepositors[_msgSender()]) {
             revert DepositorNotAllowed();
         }
         Bounty memory newBounty = Bounty(amount, _msgSender(), token);
         bounties[++count] = newBounty;
-        IERC20(token).transferFrom(_msgSender(), address(this), amount);
+
+        uint256 amountPlusFee = amount + ((amount * protocolFee) / 10_000);
+        IERC20(token).transferFrom(_msgSender(), address(this), amountPlusFee);
 
         emit BountyCreated(count, newBounty);
         return count;
@@ -127,7 +131,11 @@ contract Escrow is Ownable, LensExtension {
             splitTotal += splits[i];
         }
 
-        token.transfer(bounty.sponsor, bounty.amount - splitTotal);
+        uint256 totalSpend = bounty.amount +
+            ((bounty.amount * protocolFee) / 10_000);
+        uint256 updatedFee = (splitTotal * protocolFee) / 10_000;
+
+        token.transfer(bounty.sponsor, totalSpend - splitTotal - updatedFee);
 
         delete bounties[bountyId];
 
@@ -142,7 +150,9 @@ contract Escrow is Ownable, LensExtension {
      */
     function refund(uint256 bountyId) external onlyOwner {
         Bounty memory bounty = bounties[bountyId];
-        IERC20(bounty.token).transfer(bounty.sponsor, bounty.amount);
+        uint256 amountPlusFee = bounty.amount +
+            ((bounty.amount * protocolFee) / 10_000);
+        IERC20(bounty.token).transfer(bounty.sponsor, amountPlusFee);
 
         delete bounties[bountyId];
 
@@ -151,28 +161,20 @@ contract Escrow is Ownable, LensExtension {
 
     // ADMIN FUNCTIONS
 
-    /// @notice add list of tokens to allowlist
-    function addAllowListTokens(address[] calldata _allowedTokens)
-        external
-        onlyOwner
-    {
-        for (uint8 i = 0; i < _allowedTokens.length; ++i) {
-            allowedTokens[_allowedTokens[i]] = true;
-        }
+    /// @notice sets the protocol fee (in basis points). Close all outstanding bounties before calling
+    function setProtocolFee(uint256 _protocolFee) external onlyOwner {
+        protocolFee = _protocolFee;
 
-        emit TokensAdded(_allowedTokens);
+        emit SetProtocolFee(_protocolFee);
     }
 
-    /// @notice remove list of tokens from allowlist
-    function removeAllowListTokens(address[] calldata _allowedTokens)
-        external
-        onlyOwner
-    {
-        for (uint8 i = 0; i < _allowedTokens.length; ++i) {
-            allowedTokens[_allowedTokens[i]] = false;
+    /// @notice withdraws all accumulated fees
+    function withdrawFees(address[] calldata _tokens) external onlyOwner {
+        for (uint256 i = 0; i < _tokens.length; ++i) {
+            IERC20 token = IERC20(_tokens[i]);
+            uint256 contractBal = token.balanceOf(address(this));
+            IERC20(_tokens[i]).transfer(owner(), contractBal);
         }
-
-        emit TokensRemoved(_allowedTokens);
     }
 
     /// @notice add list of depositors to allowlist

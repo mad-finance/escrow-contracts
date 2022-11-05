@@ -12,18 +12,12 @@ contract EscrowTest is Test, DataTypes {
     address defaultSender = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
 
     function setUp() public {
-        escrow = new Escrow(address(4545454545));
+        escrow = new Escrow(address(4545454545), 0);
         mockToken = new MockToken();
 
         address[] memory depositors = new address[](1);
         depositors[0] = defaultSender;
         escrow.addDepositors(depositors);
-    }
-
-    function helperAddMockToken() public {
-        address[] memory newTokens = new address[](1);
-        newTokens[0] = address(mockToken);
-        escrow.addAllowListTokens(newTokens);
     }
 
     function helperMintApproveTokens(uint256 bountyAmount, address recipient)
@@ -37,7 +31,6 @@ contract EscrowTest is Test, DataTypes {
 
     function testCreateBounty() public {
         uint256 bountyAmount = 123;
-        helperAddMockToken();
         helperMintApproveTokens(bountyAmount, defaultSender);
         uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
         assertTrue(newBountyId == 1);
@@ -49,19 +42,10 @@ contract EscrowTest is Test, DataTypes {
         assertTrue(sponsor == defaultSender);
     }
 
-    function testFailUnkownToken() public {
-        uint256 bountyAmount = 123;
-        mockToken.mint(defaultSender, bountyAmount);
-        mockToken.approve(address(escrow), bountyAmount);
-        escrow.deposit(address(mockToken), bountyAmount);
-    }
-
     function testSettleBounty() public {
         uint256 bountyAmount = 123;
-        helperAddMockToken();
         helperMintApproveTokens(bountyAmount, defaultSender);
         uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
-        vm.warp(block.timestamp + 10);
 
         address[] memory recipients = new address[](1);
         recipients[0] = address(1);
@@ -79,7 +63,6 @@ contract EscrowTest is Test, DataTypes {
         helperMintApproveTokens(bountyAmount, newSponsor);
         vm.startPrank(newSponsor);
         newBountyId = escrow.deposit(address(mockToken), bountyAmount);
-        vm.warp(block.timestamp + 10);
 
         escrow.settle(newBountyId, recipients, new PostWithSigData[](0));
         assertTrue(mockToken.balanceOf(address(1)) == bountyAmount * 2);
@@ -88,10 +71,8 @@ contract EscrowTest is Test, DataTypes {
 
     function testFailSettleBountyBadArbiter() public {
         uint256 bountyAmount = 123;
-        helperAddMockToken();
         helperMintApproveTokens(bountyAmount, defaultSender);
         uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
-        vm.warp(block.timestamp + 9);
 
         address[] memory recipients = new address[](1);
         recipients[0] = address(1);
@@ -102,12 +83,10 @@ contract EscrowTest is Test, DataTypes {
 
     function testSettleRankedBounty() public {
         uint256 bountyAmount = 100_000_000;
-        helperAddMockToken();
         helperMintApproveTokens(bountyAmount, defaultSender);
         uint256 tokenAmountBefore = mockToken.balanceOf(defaultSender);
 
         uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
-        vm.warp(block.timestamp + 10);
 
         address[] memory recipients = new address[](2);
         recipients[0] = address(123);
@@ -142,10 +121,52 @@ contract EscrowTest is Test, DataTypes {
         address newSender = address(574839);
         uint256 bountyAmount = 100_000_000;
         escrow.openTheGates();
-        helperAddMockToken();
         helperMintApproveTokens(bountyAmount, newSender);
         vm.startPrank(newSender);
         uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
         vm.stopPrank();
+    }
+
+    function testSettleAndWithdrawFees() public {
+        uint256 fee = 500;
+        uint256 bountyAmount = 100_000_000;
+        escrow = new Escrow(address(4545454545), fee);
+        escrow.openTheGates();
+        helperMintApproveTokens(
+            bountyAmount + ((500 * bountyAmount) / 10_000),
+            defaultSender
+        );
+        uint256 beforeBal = mockToken.balanceOf(defaultSender);
+
+        uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
+
+        address[] memory recipients = new address[](2);
+        recipients[0] = address(123);
+        recipients[1] = address(124);
+
+        uint256[] memory splits = new uint256[](2);
+        splits[0] = 75_000;
+        splits[1] = 25_000;
+        escrow.rankedSettle(
+            newBountyId,
+            recipients,
+            splits,
+            new PostWithSigData[](0)
+        );
+
+        uint256 payout = splits[0] + splits[1];
+        uint256 feePaid = (payout * fee) / 10_000;
+        uint256 totalSpend = payout + feePaid;
+        assertTrue(
+            mockToken.balanceOf(defaultSender) == beforeBal - totalSpend
+        );
+
+        uint256 ownerBeforeBal = mockToken.balanceOf(defaultSender);
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(mockToken);
+        escrow.withdrawFees(tokens);
+        assertTrue(
+            mockToken.balanceOf(defaultSender) == ownerBeforeBal + feePaid
+        );
     }
 }
