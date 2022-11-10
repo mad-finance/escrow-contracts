@@ -15,9 +15,9 @@ import "./extensions/LensExtension.sol";
 
 contract Escrow is Ownable, LensExtension {
     uint256 public protocolFee;
-    uint256 private count;
+    uint256 internal count;
     mapping(uint256 => Bounty) public bounties;
-    mapping(address => bool) private allowedDepositors;
+    mapping(address => bool) public allowedDepositors;
 
     bool onlyAllowedDepositors = true;
 
@@ -31,8 +31,6 @@ contract Escrow is Ownable, LensExtension {
     event BountyCreated(uint256 bountyId, Bounty bounty);
     event BountySettled(uint256 bountyId, address[] recipients);
     event BountyRefunded(uint256 bountyId);
-    event TokensAdded(address[] tokens);
-    event TokensRemoved(address[] tokens);
     event DepositorsAdded(address[] depositors);
     event DepositorsRemoved(address[] depositors);
     event OpenTheGates();

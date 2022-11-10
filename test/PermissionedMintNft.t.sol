@@ -56,9 +56,6 @@ contract PermissionedMintNftTest is Test {
     function testUriEncoding() public {
         uint256 nonce = 1;
         address recipient = address(9);
-        bytes32 hash = ECDSA.toEthSignedMessageHash(
-            keccak256(abi.encode(address(nft), recipient, nonce))
-        );
         nft.mint(recipient, nonce, signature);
         assertTrue(
             keccak256(abi.encodePacked(nft.tokenURI(0))) ==
@@ -67,9 +64,6 @@ contract PermissionedMintNftTest is Test {
 
         nonce = 2;
         recipient = address(9);
-        hash = ECDSA.toEthSignedMessageHash(
-            keccak256(abi.encode(address(nft), recipient, nonce))
-        );
         bytes
             memory sig2 = hex"fb22dc7e091a804ff29e2b5b80f37774d0bdf2a0eedfbd1b38df21fbe938e8117027a5fc65e73516f15613e60f432e1b9196c2d45bab7ddbb0fdac5f5d012e921b";
         nft.mint(recipient, nonce, sig2);
