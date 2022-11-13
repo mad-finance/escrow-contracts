@@ -14,7 +14,7 @@ import "openzeppelin/access/Ownable.sol";
 import "./extensions/LensExtension.sol";
 
 contract Escrow is Ownable, LensExtension {
-    uint256 public protocolFee;
+    uint256 public protocolFee; // basis points
     uint256 internal count;
     mapping(uint256 => Bounty) public bounties;
     mapping(address => bool) public allowedDepositors;
