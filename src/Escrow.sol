@@ -114,7 +114,9 @@ contract Escrow is Ownable, LensExtension {
         uint256[] calldata splits,
         PostWithSigData[] calldata posts
     ) external {
-        if (recipients.length != splits.length) {
+        if (
+            recipients.length != splits.length && splits.length != posts.length
+        ) {
             revert InvalidSplits();
         }
         Bounty memory bounty = bounties[bountyId];
@@ -135,9 +137,9 @@ contract Escrow is Ownable, LensExtension {
 
         token.transfer(bounty.sponsor, totalSpend - splitTotal - updatedFee);
 
-        delete bounties[bountyId];
-
         postWithSigBatch(posts);
+
+        delete bounties[bountyId];
 
         emit BountySettled(bountyId, recipients);
     }
