@@ -68,7 +68,11 @@ contract Escrow is Ownable, LensExtension {
         Bounty memory newBounty = Bounty(amount, _msgSender(), token);
         bounties[++count] = newBounty;
 
-        IERC20(token).transferFrom(_msgSender(), address(this), amount + calcFee(amount));
+        IERC20(token).transferFrom(
+            _msgSender(),
+            address(this),
+            amount + calcFee(amount)
+        );
 
         emit BountyCreated(count, newBounty);
         return count;
@@ -86,7 +90,7 @@ contract Escrow is Ownable, LensExtension {
     ) external {
         uint256 split = 100000 / recipients.length;
         Bounty memory bounty = bounties[bountyId];
-        if (_msgSender() != owner() && _msgSender() != bounty.sponsor) {
+        if (_msgSender() != bounty.sponsor) {
             revert NotArbiter();
         }
 
@@ -118,13 +122,11 @@ contract Escrow is Ownable, LensExtension {
         uint256[] calldata splits,
         PostWithSigData[] calldata posts
     ) external {
-        if (
-            recipients.length != splits.length && splits.length != posts.length
-        ) {
+        if (recipients.length != splits.length) {
             revert InvalidSplits();
         }
         Bounty memory bounty = bounties[bountyId];
-        if (_msgSender() != bounty.sponsor && _msgSender() != owner()) {
+        if (_msgSender() != bounty.sponsor) {
             revert NotArbiter();
         }
 
