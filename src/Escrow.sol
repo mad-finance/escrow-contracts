@@ -15,11 +15,13 @@ import "./extensions/LensExtension.sol";
 
 contract Escrow is Ownable, LensExtension {
     uint256 public protocolFee; // basis points
+    mapping(address => uint256) public feesEarned;
+
     uint256 internal count;
     mapping(uint256 => Bounty) public bounties;
     mapping(address => bool) public allowedDepositors;
 
-    bool onlyAllowedDepositors = true;
+    bool internal onlyAllowedDepositors = true;
 
     struct Bounty {
         uint256 amount;
@@ -53,7 +55,7 @@ contract Escrow is Ownable, LensExtension {
 
     /**
      * @notice desposits tokens creating an open bounty
-     * @param token token to deposit - must be allowed
+     * @param token token to deposit
      * @param amount amount of token to deposit
      */
     function deposit(address token, uint256 amount)
@@ -66,8 +68,7 @@ contract Escrow is Ownable, LensExtension {
         Bounty memory newBounty = Bounty(amount, _msgSender(), token);
         bounties[++count] = newBounty;
 
-        uint256 amountPlusFee = amount + ((amount * protocolFee) / 10_000);
-        IERC20(token).transferFrom(_msgSender(), address(this), amountPlusFee);
+        IERC20(token).transferFrom(_msgSender(), address(this), amount + calcFee(amount));
 
         emit BountyCreated(count, newBounty);
         return count;
@@ -95,18 +96,21 @@ contract Escrow is Ownable, LensExtension {
             token.transfer(recipients[i], recipSplit);
         }
 
-        delete bounties[bountyId];
+        feesEarned[bounty.token] += calcFee(bounty.amount);
 
         postWithSigBatch(posts);
+
+        delete bounties[bountyId];
 
         emit BountySettled(bountyId, recipients);
     }
 
     /**
-     * @notice settles the bounty by splitting between all recipients by percent
+     * @notice settles the bounty by splitting between all recipients and posts to Lens
      * @param bountyId bounty to settle
      * @param recipients list of addresses to disperse to
-     * @param splits list of split amounts to go to each recipient, should add up to 100,000
+     * @param splits list of split amounts to go to each recipient
+     * @param posts PostWithSigData to post to Lens on recipients behalf
      */
     function rankedSettle(
         uint256 bountyId,
@@ -120,22 +124,32 @@ contract Escrow is Ownable, LensExtension {
             revert InvalidSplits();
         }
         Bounty memory bounty = bounties[bountyId];
-        if (_msgSender() != owner() && _msgSender() != bounty.sponsor) {
+        if (_msgSender() != bounty.sponsor && _msgSender() != owner()) {
             revert NotArbiter();
         }
 
         uint256 splitTotal;
         IERC20 token = IERC20(bounty.token);
         for (uint256 i = 0; i < recipients.length; ++i) {
-            token.transfer(recipients[i], splits[i]);
             splitTotal += splits[i];
+            token.transfer(recipients[i], splits[i]);
         }
 
-        uint256 totalSpend = bounty.amount +
-            ((bounty.amount * protocolFee) / 10_000);
-        uint256 updatedFee = (splitTotal * protocolFee) / 10_000;
+        if (splitTotal > bounty.amount) {
+            revert InvalidSplits();
+        }
 
-        token.transfer(bounty.sponsor, totalSpend - splitTotal - updatedFee);
+        uint256 totalSpend = bounty.amount + calcFee(bounty.amount);
+        uint256 updatedFee = calcFee(splitTotal);
+
+        feesEarned[bounty.token] += updatedFee;
+
+        unchecked {
+            token.transfer(
+                bounty.sponsor,
+                totalSpend - splitTotal - updatedFee
+            );
+        }
 
         postWithSigBatch(posts);
 
@@ -150,13 +164,20 @@ contract Escrow is Ownable, LensExtension {
      */
     function refund(uint256 bountyId) external onlyOwner {
         Bounty memory bounty = bounties[bountyId];
-        uint256 amountPlusFee = bounty.amount +
-            ((bounty.amount * protocolFee) / 10_000);
+        uint256 amountPlusFee = bounty.amount + calcFee(bounty.amount);
         IERC20(bounty.token).transfer(bounty.sponsor, amountPlusFee);
 
         delete bounties[bountyId];
 
         emit BountyRefunded(bountyId);
+    }
+
+    /**
+     * @notice calculates the fee to be paid on a token amount
+     * @param amount token amount to calculate fee for
+     */
+    function calcFee(uint256 amount) public view returns (uint256) {
+        return (amount * protocolFee) / 10_000;
     }
 
     // ADMIN FUNCTIONS
@@ -171,8 +192,8 @@ contract Escrow is Ownable, LensExtension {
     /// @notice withdraws all accumulated fees
     function withdrawFees(address[] calldata _tokens) external onlyOwner {
         for (uint256 i = 0; i < _tokens.length; ++i) {
-            IERC20 token = IERC20(_tokens[i]);
-            uint256 contractBal = token.balanceOf(address(this));
+            uint256 contractBal = feesEarned[_tokens[i]];
+            feesEarned[_tokens[i]] = 0;
             IERC20(_tokens[i]).transfer(owner(), contractBal);
         }
     }

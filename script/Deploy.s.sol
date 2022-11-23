@@ -12,10 +12,10 @@ contract DeployScript is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // TODO: be sure to set correct network address
-        address lensHubPolygon = 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d;
+        // address lensHubPolygon = 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d;
         address lensHubMumbai = 0x60Ae865ee4C725cd04353b5AAb364553f56ceF82;
         uint256 protocolFee = 500;
-        Escrow escrow = new Escrow(lensHubMumbai, protocolFee);
+        new Escrow(lensHubMumbai, protocolFee);
 
         vm.stopBroadcast();
     }
