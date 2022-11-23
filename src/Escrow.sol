@@ -31,7 +31,7 @@ contract Escrow is Ownable, LensExtension {
 
     // EVENTS
     event BountyCreated(uint256 bountyId, Bounty bounty);
-    event BountySettled(uint256 bountyId, address[] recipients);
+    event BountySettled(uint256 bountyId);
     event BountyRefunded(uint256 bountyId);
     event DepositorsAdded(address[] depositors);
     event DepositorsRemoved(address[] depositors);
@@ -106,7 +106,7 @@ contract Escrow is Ownable, LensExtension {
 
         delete bounties[bountyId];
 
-        emit BountySettled(bountyId, recipients);
+        emit BountySettled(bountyId);
     }
 
     /**
@@ -122,9 +122,6 @@ contract Escrow is Ownable, LensExtension {
         uint256[] calldata splits,
         PostWithSigData[] calldata posts
     ) external {
-        if (recipients.length != splits.length) {
-            revert InvalidSplits();
-        }
         Bounty memory bounty = bounties[bountyId];
         if (_msgSender() != bounty.sponsor) {
             revert NotArbiter();
@@ -157,7 +154,7 @@ contract Escrow is Ownable, LensExtension {
 
         delete bounties[bountyId];
 
-        emit BountySettled(bountyId, recipients);
+        emit BountySettled(bountyId);
     }
 
     /**

@@ -186,6 +186,31 @@ contract EscrowTest is Test, DataTypes {
         uint256[] memory splits = new uint256[](2);
         splits[0] = 75_000;
         splits[1] = 75_000;
+
+        escrow.rankedSettle(
+            newBountyId,
+            recipients,
+            splits,
+            new PostWithSigData[](0)
+        );
+    }
+
+    function testFailTooFewSplits() public {
+        uint256 bountyAmount = 100_000;
+        helperMintApproveTokens(bountyAmount, defaultSender);
+        helperMintApproveTokens(bountyAmount, address(escrow));
+
+        assertTrue(mockToken.balanceOf(address(escrow)) == 2 * bountyAmount);
+
+        uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
+
+        address[] memory recipients = new address[](2);
+        recipients[0] = address(123);
+        recipients[1] = address(124);
+
+        uint256[] memory splits = new uint256[](2);
+        splits[0] = 75_000;
+
         escrow.rankedSettle(
             newBountyId,
             recipients,
@@ -216,7 +241,6 @@ contract EscrowTest is Test, DataTypes {
         splits[0] = 75_000;
         splits[1] = 25_000;
 
-        
         escrow.rankedSettle(
             newBountyId,
             recipients,
@@ -235,7 +259,9 @@ contract EscrowTest is Test, DataTypes {
         address[] memory tokens = new address[](1);
         tokens[0] = address(mockToken);
 
-        assertTrue(mockToken.balanceOf(address(escrow)) == bountyAmount + feePaid);
+        assertTrue(
+            mockToken.balanceOf(address(escrow)) == bountyAmount + feePaid
+        );
         escrow.withdrawFees(tokens);
         assertTrue(
             mockToken.balanceOf(defaultSender) == ownerBeforeBal + feePaid
