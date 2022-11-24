@@ -11,7 +11,7 @@ Smart contracts for escrowing funds for bounties and issuing funds/rewards.
 
 ## Escrow
 
-Escrows funds for bounties. Includes list of allowed tokens that can be used for rewards, updateable only by contract owner.
+Escrows funds for bounties.
 
 Functions:
 
