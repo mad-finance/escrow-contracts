@@ -227,4 +227,9 @@ contract Escrow is Ownable, LensExtension {
 
         emit OpenTheGates();
     }
+
+    /// @notice fallback function to prevent accidental ether transfers
+    receive() external payable {
+        revert();
+    }
 }
