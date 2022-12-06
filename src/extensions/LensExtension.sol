@@ -19,25 +19,67 @@ interface DataTypes {
         bytes referenceModuleInitData;
         EIP712Signature sig;
     }
+
+    struct MirrorWithSigData {
+        uint256 profileId;
+        uint256 profileIdPointed;
+        uint256 pubIdPointed;
+        bytes referenceModuleData;
+        address referenceModule;
+        bytes referenceModuleInitData;
+        EIP712Signature sig;
+    }
+
+    struct CommentWithSigData {
+        uint256 profileId;
+        string contentURI;
+        uint256 profileIdPointed;
+        uint256 pubIdPointed;
+        bytes referenceModuleData;
+        address collectModule;
+        bytes collectModuleInitData;
+        address referenceModule;
+        bytes referenceModuleInitData;
+        EIP712Signature sig;
+    }
 }
 
 interface ILensHub is DataTypes {
     function postWithSig(PostWithSigData calldata vars)
         external
         returns (uint256);
+
+    function mirrorWithSig(DataTypes.MirrorWithSigData calldata vars)
+        external
+        returns (uint256);
+
+    function commentWithSig(DataTypes.CommentWithSigData calldata vars)
+        external
+        returns (uint256);
 }
 
 contract LensExtension is DataTypes {
-    address internal lensHubAddress;
+    ILensHub internal lensHub;
 
     constructor(address _lensHub) {
-        lensHubAddress = _lensHub;
+        lensHub = ILensHub(_lensHub);
     }
 
     function postWithSigBatch(PostWithSigData[] calldata posts) internal {
-        ILensHub lensHub = ILensHub(lensHubAddress);
         for (uint256 i = 0; i < posts.length; ++i) {
             lensHub.postWithSig(posts[i]);
+        }
+    }
+
+    function mirrorWithSigBatch(MirrorWithSigData[] calldata posts) internal {
+        for (uint256 i = 0; i < posts.length; ++i) {
+            lensHub.mirrorWithSig(posts[i]);
+        }
+    }
+
+    function commentWithSigBatch(CommentWithSigData[] calldata posts) internal {
+        for (uint256 i = 0; i < posts.length; ++i) {
+            lensHub.commentWithSig(posts[i]);
         }
     }
 }

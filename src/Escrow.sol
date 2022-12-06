@@ -122,6 +122,49 @@ contract Escrow is Ownable, LensExtension {
         uint256[] calldata splits,
         PostWithSigData[] calldata posts
     ) external {
+        _rankedSettle(bountyId, recipients, splits);
+        postWithSigBatch(posts);
+    }
+
+    /**
+     * @notice settles the bounty by splitting between all recipients and posts to Lens
+     * @param bountyId bounty to settle
+     * @param recipients list of addresses to disperse to
+     * @param splits list of split amounts to go to each recipient
+     * @param posts MirrorWithSigData to mirror to Lens on recipients behalf
+     */
+    function rankedSettle(
+        uint256 bountyId,
+        address[] calldata recipients,
+        uint256[] calldata splits,
+        MirrorWithSigData[] calldata posts
+    ) external {
+        _rankedSettle(bountyId, recipients, splits);
+        mirrorWithSigBatch(posts);
+    }
+
+    /**
+     * @notice settles the bounty by splitting between all recipients and posts to Lens
+     * @param bountyId bounty to settle
+     * @param recipients list of addresses to disperse to
+     * @param splits list of split amounts to go to each recipient
+     * @param posts CommentWithSigData to comment to Lens on recipients behalf
+     */
+    function rankedSettle(
+        uint256 bountyId,
+        address[] calldata recipients,
+        uint256[] calldata splits,
+        CommentWithSigData[] calldata posts
+    ) external {
+        _rankedSettle(bountyId, recipients, splits);
+        commentWithSigBatch(posts);
+    }
+
+    function _rankedSettle(
+        uint256 bountyId,
+        address[] calldata recipients,
+        uint256[] calldata splits
+    ) internal {
         Bounty memory bounty = bounties[bountyId];
         if (_msgSender() != bounty.sponsor) {
             revert NotArbiter();
@@ -149,8 +192,6 @@ contract Escrow is Ownable, LensExtension {
                 totalSpend - splitTotal - updatedFee
             );
         }
-
-        postWithSigBatch(posts);
 
         delete bounties[bountyId];
 
