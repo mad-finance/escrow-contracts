@@ -19,7 +19,7 @@ Functions:
 
 - settle: Specifies winners of bounty and distributes funds and posts to Lens
 
-- rankedSettle: settles the bounty by splitting between all recipients and posts to Lens
+- rankedSettle: settles the bounty by splitting between all recipients and posts to Lens. There are different versions for posting, mirroring, commenting, following and collecting.
 
 - refund: Returns escrowed tokens for a bounty to sponsor. Can only be called by contract owner.
 
@@ -36,3 +36,11 @@ Functions:
 ## PermissionedMintNft
 
 An nft contract with unlimited supply that requires a signature from the contract owner to mint a token.
+
+## Deploy Call
+
+```bash
+source .env
+
+forge script script/Deploy.s.sol:DeployScript --rpc-url $MUMBAI_RPC_URL --broadcast --verify -vvvv
+```
