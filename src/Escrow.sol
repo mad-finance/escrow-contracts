@@ -127,7 +127,7 @@ contract Escrow is Ownable, LensExtension {
     }
 
     /**
-     * @notice settles the bounty by splitting between all recipients and posts to Lens
+     * @notice settles the bounty by splitting between all recipients and mirrors on Lens
      * @param bountyId bounty to settle
      * @param recipients list of addresses to disperse to
      * @param splits list of split amounts to go to each recipient
@@ -144,7 +144,7 @@ contract Escrow is Ownable, LensExtension {
     }
 
     /**
-     * @notice settles the bounty by splitting between all recipients and posts to Lens
+     * @notice settles the bounty by splitting between all recipients and comments on Lens
      * @param bountyId bounty to settle
      * @param recipients list of addresses to disperse to
      * @param splits list of split amounts to go to each recipient
@@ -158,6 +158,23 @@ contract Escrow is Ownable, LensExtension {
     ) external {
         _rankedSettle(bountyId, recipients, splits);
         commentWithSigBatch(posts);
+    }
+
+    /**
+     * @notice settles the bounty by splitting between all recipients and follows on Lens
+     * @param bountyId bounty to settle
+     * @param recipients list of addresses to disperse to
+     * @param splits list of split amounts to go to each recipient
+     * @param posts FollowWithSigData to follow the given Lens accounts
+     */
+    function rankedSettle(
+        uint256 bountyId,
+        address[] calldata recipients,
+        uint256[] calldata splits,
+        FollowWithSigData[] calldata posts
+    ) external {
+        _rankedSettle(bountyId, recipients, splits);
+        followWithSigBatch(posts);
     }
 
     function _rankedSettle(
