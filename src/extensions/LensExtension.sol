@@ -49,6 +49,14 @@ interface DataTypes {
         bytes[] datas;
         EIP712Signature sig;
     }
+
+    struct CollectWithSigData {
+        address collector;
+        uint256 profileId;
+        uint256 pubId;
+        bytes data;
+        EIP712Signature sig;
+    }
 }
 
 interface ILensHub is DataTypes {
@@ -65,6 +73,10 @@ interface ILensHub is DataTypes {
         returns (uint256);
 
     function followWithSig(DataTypes.FollowWithSigData calldata vars)
+        external
+        returns (uint256);
+
+    function collectWithSig(DataTypes.CollectWithSigData calldata vars)
         external
         returns (uint256);
 }
@@ -97,6 +109,12 @@ contract LensExtension is DataTypes {
     function followWithSigBatch(FollowWithSigData[] calldata posts) internal {
         for (uint256 i = 0; i < posts.length; ++i) {
             lensHub.followWithSig(posts[i]);
+        }
+    }
+
+    function collectWithSigBatch(CollectWithSigData[] calldata posts) internal {
+        for (uint256 i = 0; i < posts.length; ++i) {
+            lensHub.collectWithSig(posts[i]);
         }
     }
 }

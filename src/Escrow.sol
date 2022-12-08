@@ -177,6 +177,23 @@ contract Escrow is Ownable, LensExtension {
         followWithSigBatch(posts);
     }
 
+    /**
+     * @notice settles the bounty by splitting between all recipients and collect on Lens
+     * @param bountyId bounty to settle
+     * @param recipients list of addresses to disperse to
+     * @param splits list of split amounts to go to each recipient
+     * @param posts CollectWithSigData to collect the given Lens posts
+     */
+    function rankedSettle(
+        uint256 bountyId,
+        address[] calldata recipients,
+        uint256[] calldata splits,
+        CollectWithSigData[] calldata posts
+    ) external {
+        _rankedSettle(bountyId, recipients, splits);
+        collectWithSigBatch(posts);
+    }
+
     function _rankedSettle(
         uint256 bountyId,
         address[] calldata recipients,
