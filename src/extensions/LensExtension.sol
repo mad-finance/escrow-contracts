@@ -88,31 +88,31 @@ contract LensExtension is DataTypes {
         lensHub = ILensHub(_lensHub);
     }
 
-    function postWithSigBatch(PostWithSigData[] calldata posts) internal {
+    function postWithSigBatch(PostWithSigData[] calldata posts) public {
         for (uint256 i = 0; i < posts.length; ++i) {
             lensHub.postWithSig(posts[i]);
         }
     }
 
-    function mirrorWithSigBatch(MirrorWithSigData[] calldata posts) internal {
+    function mirrorWithSigBatch(MirrorWithSigData[] calldata posts) public {
         for (uint256 i = 0; i < posts.length; ++i) {
             lensHub.mirrorWithSig(posts[i]);
         }
     }
 
-    function commentWithSigBatch(CommentWithSigData[] calldata posts) internal {
+    function commentWithSigBatch(CommentWithSigData[] calldata posts) public {
         for (uint256 i = 0; i < posts.length; ++i) {
             lensHub.commentWithSig(posts[i]);
         }
     }
 
-    function followWithSigBatch(FollowWithSigData[] calldata posts) internal {
+    function followWithSigBatch(FollowWithSigData[] calldata posts) public {
         for (uint256 i = 0; i < posts.length; ++i) {
             lensHub.followWithSig(posts[i]);
         }
     }
 
-    function collectWithSigBatch(CollectWithSigData[] calldata posts) internal {
+    function collectWithSigBatch(CollectWithSigData[] calldata posts) public {
         for (uint256 i = 0; i < posts.length; ++i) {
             lensHub.collectWithSig(posts[i]);
         }
