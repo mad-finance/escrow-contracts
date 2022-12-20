@@ -15,24 +15,14 @@ contract PermissionedMintNft is ERC721, Ownable {
 
     mapping(uint256 => bool) internal usedNonces;
 
-    constructor(
-        string memory _name,
-        string memory _symbol,
-        string memory _baseURI
-    ) Ownable() ERC721(_name, _symbol) {
+    constructor(string memory _name, string memory _symbol, string memory _baseURI) Ownable() ERC721(_name, _symbol) {
         setBaseURI(_baseURI);
         setNotary(_msgSender());
     }
 
     /// @notice allows a user to mint an Nft of their brief
-    function mint(
-        address recipient,
-        uint256 nonce,
-        bytes memory signature
-    ) public {
-        bytes32 hash = ECDSA.toEthSignedMessageHash(
-            keccak256(abi.encode(address(this), recipient, nonce))
-        );
+    function mint(address recipient, uint256 nonce, bytes memory signature) public {
+        bytes32 hash = ECDSA.toEthSignedMessageHash(keccak256(abi.encode(address(this), recipient, nonce)));
 
         if (notary != ECDSA.recover(hash, signature)) {
             revert InvalidNotarization();
@@ -48,20 +38,12 @@ contract PermissionedMintNft is ERC721, Ownable {
     }
 
     /// @notice returns token Uri
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override
-        returns (string memory)
-    {
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
         if (!_exists(tokenId)) {
             revert NonexistantToken();
         }
 
-        return
-            bytes(baseURI).length > 0
-                ? string.concat(baseURI, "/", tokenId.toString())
-                : "";
+        return bytes(baseURI).length > 0 ? string.concat(baseURI, "/", tokenId.toString()) : "";
     }
 
     // ADMIN FUNCTIONS

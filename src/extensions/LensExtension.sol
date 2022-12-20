@@ -60,25 +60,15 @@ interface DataTypes {
 }
 
 interface ILensHub is DataTypes {
-    function postWithSig(PostWithSigData calldata vars)
-        external
-        returns (uint256);
+    function postWithSig(PostWithSigData calldata vars) external returns (uint256);
 
-    function mirrorWithSig(DataTypes.MirrorWithSigData calldata vars)
-        external
-        returns (uint256);
+    function mirrorWithSig(MirrorWithSigData calldata vars) external returns (uint256);
 
-    function commentWithSig(DataTypes.CommentWithSigData calldata vars)
-        external
-        returns (uint256);
+    function commentWithSig(CommentWithSigData calldata vars) external returns (uint256);
 
-    function followWithSig(DataTypes.FollowWithSigData calldata vars)
-        external
-        returns (uint256);
+    function followWithSig(FollowWithSigData calldata vars) external returns (uint256);
 
-    function collectWithSig(DataTypes.CollectWithSigData calldata vars)
-        external
-        returns (uint256);
+    function collectWithSig(CollectWithSigData calldata vars) external returns (uint256);
 }
 
 contract LensExtension is DataTypes {
@@ -88,33 +78,33 @@ contract LensExtension is DataTypes {
         lensHub = ILensHub(_lensHub);
     }
 
-    function postWithSigBatch(PostWithSigData[] calldata posts) public {
-        for (uint256 i = 0; i < posts.length; ++i) {
-            lensHub.postWithSig(posts[i]);
+    function postWithSigBatch(PostWithSigData[] calldata data) public {
+        for (uint256 i = 0; i < data.length; ++i) {
+            lensHub.postWithSig(data[i]);
         }
     }
 
-    function mirrorWithSigBatch(MirrorWithSigData[] calldata posts) public {
-        for (uint256 i = 0; i < posts.length; ++i) {
-            lensHub.mirrorWithSig(posts[i]);
+    function mirrorWithSigBatch(MirrorWithSigData[] calldata data) public {
+        for (uint256 i = 0; i < data.length; ++i) {
+            lensHub.mirrorWithSig(data[i]);
         }
     }
 
-    function commentWithSigBatch(CommentWithSigData[] calldata posts) public {
-        for (uint256 i = 0; i < posts.length; ++i) {
-            lensHub.commentWithSig(posts[i]);
+    function commentWithSigBatch(CommentWithSigData[] calldata data) public {
+        for (uint256 i = 0; i < data.length; ++i) {
+            lensHub.commentWithSig(data[i]);
         }
     }
 
-    function followWithSigBatch(FollowWithSigData[] calldata posts) public {
-        for (uint256 i = 0; i < posts.length; ++i) {
-            lensHub.followWithSig(posts[i]);
+    function followWithSigBatch(FollowWithSigData[] calldata data) public {
+        for (uint256 i = 0; i < data.length; ++i) {
+            lensHub.followWithSig(data[i]);
         }
     }
 
-    function collectWithSigBatch(CollectWithSigData[] calldata posts) public {
-        for (uint256 i = 0; i < posts.length; ++i) {
-            lensHub.collectWithSig(posts[i]);
+    function collectWithSigBatch(CollectWithSigData[] calldata data) public {
+        for (uint256 i = 0; i < data.length; ++i) {
+            lensHub.collectWithSig(data[i]);
         }
     }
 }

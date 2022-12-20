@@ -42,8 +42,8 @@ contract PermissionedMintNftTest is Test {
     function testFailMintNftBadNotary() public {
         uint256 nonce = 1;
         address recipient = address(9);
-        bytes
-            memory badSig = hex"84c4ba596bb5fe17732a4ebf3a801926d379b45fca5909cb70d7c54a846d551061cce193018a232d30f4e4d2277ae143ed77ff6dc9ca83ed95d1ae30305e8d331c";
+        bytes memory badSig =
+            hex"84c4ba596bb5fe17732a4ebf3a801926d379b45fca5909cb70d7c54a846d551061cce193018a232d30f4e4d2277ae143ed77ff6dc9ca83ed95d1ae30305e8d331c";
         nft.mint(recipient, nonce, badSig);
     }
 
@@ -58,18 +58,16 @@ contract PermissionedMintNftTest is Test {
         address recipient = address(9);
         nft.mint(recipient, nonce, signature);
         assertTrue(
-            keccak256(abi.encodePacked(nft.tokenURI(0))) ==
-                keccak256(abi.encodePacked("ipfs://ipfs_root_hash/0"))
+            keccak256(abi.encodePacked(nft.tokenURI(0))) == keccak256(abi.encodePacked("ipfs://ipfs_root_hash/0"))
         );
 
         nonce = 2;
         recipient = address(9);
-        bytes
-            memory sig2 = hex"fb22dc7e091a804ff29e2b5b80f37774d0bdf2a0eedfbd1b38df21fbe938e8117027a5fc65e73516f15613e60f432e1b9196c2d45bab7ddbb0fdac5f5d012e921b";
+        bytes memory sig2 =
+            hex"fb22dc7e091a804ff29e2b5b80f37774d0bdf2a0eedfbd1b38df21fbe938e8117027a5fc65e73516f15613e60f432e1b9196c2d45bab7ddbb0fdac5f5d012e921b";
         nft.mint(recipient, nonce, sig2);
         assertTrue(
-            keccak256(abi.encodePacked(nft.tokenURI(1))) ==
-                keccak256(abi.encodePacked("ipfs://ipfs_root_hash/1"))
+            keccak256(abi.encodePacked(nft.tokenURI(1))) == keccak256(abi.encodePacked("ipfs://ipfs_root_hash/1"))
         );
     }
 

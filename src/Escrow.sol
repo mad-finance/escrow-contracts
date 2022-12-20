@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 /**
- ______   ______   ______   ______   ______   __     __    
-/\  ___\ /\  ___\ /\  ___\ /\  == \ /\  __ \ /\ \  _ \ \   
-\ \  __\ \ \___  \\ \ \____\ \  __< \ \ \/\ \\ \ \/ ".\ \  
- \ \_____\\/\_____\\ \_____\\ \_\ \_\\ \_____\\ \__/".~\_\ 
-  \/_____/ \/_____/ \/_____/ \/_/ /_/ \/_____/ \/_/   \/_/ 
-
+ * ______   ______   ______   ______   ______   __     __
+ * /\  ___\ /\  ___\ /\  ___\ /\  == \ /\  __ \ /\ \  _ \ \
+ * \ \  __\ \ \___  \\ \ \____\ \  __< \ \ \/\ \\ \ \/ ".\ \
+ *  \ \_____\\/\_____\\ \_____\\ \_\ \_\\ \_____\\ \__/".~\_\
+ *   \/_____/ \/_____/ \/_____/ \/_/ /_/ \/_____/ \/_/   \/_/
  */
 pragma solidity ^0.8.13;
 
@@ -44,10 +43,7 @@ contract Escrow is Ownable, LensExtension {
     error DepositorNotAllowed();
     error InvalidSplits();
 
-    constructor(address _lensHub, uint256 _protocolFee)
-        Ownable()
-        LensExtension(_lensHub)
-    {
+    constructor(address _lensHub, uint256 _protocolFee) Ownable() LensExtension(_lensHub) {
         protocolFee = _protocolFee;
     }
 
@@ -58,21 +54,14 @@ contract Escrow is Ownable, LensExtension {
      * @param token token to deposit
      * @param amount amount of token to deposit
      */
-    function deposit(address token, uint256 amount)
-        external
-        returns (uint256 bountyId)
-    {
+    function deposit(address token, uint256 amount) external returns (uint256 bountyId) {
         if (onlyAllowedDepositors && !allowedDepositors[_msgSender()]) {
             revert DepositorNotAllowed();
         }
         Bounty memory newBounty = Bounty(amount, _msgSender(), token);
         bounties[++count] = newBounty;
 
-        IERC20(token).transferFrom(
-            _msgSender(),
-            address(this),
-            amount + calcFee(amount)
-        );
+        IERC20(token).transferFrom(_msgSender(), address(this), amount + calcFee(amount));
 
         emit BountyCreated(count, newBounty);
         return count;
@@ -83,11 +72,7 @@ contract Escrow is Ownable, LensExtension {
      * @param bountyId bounty to settle
      * @param recipients list of addresses to disperse to
      */
-    function settle(
-        uint256 bountyId,
-        address[] calldata recipients,
-        PostWithSigData[] calldata posts
-    ) external {
+    function settle(uint256 bountyId, address[] calldata recipients, PostWithSigData[] calldata posts) external {
         uint256 split = 100000 / recipients.length;
         Bounty memory bounty = bounties[bountyId];
         if (_msgSender() != bounty.sponsor) {
@@ -126,11 +111,7 @@ contract Escrow is Ownable, LensExtension {
         postWithSigBatch(posts);
     }
 
-    function _rankedSettle(
-        uint256 bountyId,
-        address[] calldata recipients,
-        uint256[] calldata splits
-    ) internal {
+    function _rankedSettle(uint256 bountyId, address[] calldata recipients, uint256[] calldata splits) internal {
         Bounty memory bounty = bounties[bountyId];
         if (_msgSender() != bounty.sponsor) {
             revert NotArbiter();
@@ -153,10 +134,7 @@ contract Escrow is Ownable, LensExtension {
         feesEarned[bounty.token] += updatedFee;
 
         unchecked {
-            token.transfer(
-                bounty.sponsor,
-                totalSpend - splitTotal - updatedFee
-            );
+            token.transfer(bounty.sponsor, totalSpend - splitTotal - updatedFee);
         }
 
         delete bounties[bountyId];
@@ -205,10 +183,7 @@ contract Escrow is Ownable, LensExtension {
     }
 
     /// @notice add list of depositors to allowlist
-    function addDepositors(address[] calldata _allowedDepositors)
-        external
-        onlyOwner
-    {
+    function addDepositors(address[] calldata _allowedDepositors) external onlyOwner {
         for (uint8 i = 0; i < _allowedDepositors.length; ++i) {
             allowedDepositors[_allowedDepositors[i]] = true;
         }
@@ -217,10 +192,7 @@ contract Escrow is Ownable, LensExtension {
     }
 
     /// @notice remove list of depositors from allowlist
-    function removeDepositors(address[] calldata _allowedDepositors)
-        external
-        onlyOwner
-    {
+    function removeDepositors(address[] calldata _allowedDepositors) external onlyOwner {
         for (uint8 i = 0; i < _allowedDepositors.length; ++i) {
             allowedDepositors[_allowedDepositors[i]] = false;
         }
