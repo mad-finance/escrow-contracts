@@ -30,8 +30,8 @@ contract Escrow is Ownable, LensExtension {
 
     // EVENTS
     event BountyCreated(uint256 bountyId, Bounty bounty);
-    event BountySettled(uint256 bountyId);
-    event BountyRefunded(uint256 bountyId);
+    event BountyPayments(address[] recipients);
+    event BountyClosed(uint256 bountyId);
     event DepositorsAdded(address[] depositors);
     event DepositorsRemoved(address[] depositors);
     event OpenTheGates();
@@ -61,41 +61,14 @@ contract Escrow is Ownable, LensExtension {
         Bounty memory newBounty = Bounty(amount, _msgSender(), token);
         bounties[++count] = newBounty;
 
-        IERC20(token).transferFrom(_msgSender(), address(this), amount + calcFee(amount));
+        IERC20(token).transferFrom(_msgSender(), address(this), amount);
 
         emit BountyCreated(count, newBounty);
         return count;
     }
 
     /**
-     * @notice settles the bounty by splitting evenly between all recipients
-     * @param bountyId bounty to settle
-     * @param recipients list of addresses to disperse to
-     */
-    function settle(uint256 bountyId, address[] calldata recipients, PostWithSigData[] calldata posts) external {
-        uint256 split = 100000 / recipients.length;
-        Bounty memory bounty = bounties[bountyId];
-        if (_msgSender() != bounty.sponsor) {
-            revert NotArbiter();
-        }
-
-        IERC20 token = IERC20(bounty.token);
-        for (uint256 i = 0; i < recipients.length; ++i) {
-            uint256 recipSplit = (split * bounty.amount) / 100000;
-            token.transfer(recipients[i], recipSplit);
-        }
-
-        feesEarned[bounty.token] += calcFee(bounty.amount);
-
-        postWithSigBatch(posts);
-
-        delete bounties[bountyId];
-
-        emit BountySettled(bountyId);
-    }
-
-    /**
-     * @notice settles the bounty by splitting between all recipients and posts to Lens
+     * @notice disperse funds to recipeints and post to Lens
      * @param bountyId bounty to settle
      * @param recipients list of addresses to disperse to
      * @param splits list of split amounts to go to each recipient
@@ -124,36 +97,28 @@ contract Escrow is Ownable, LensExtension {
             token.transfer(recipients[i], splits[i]);
         }
 
-        if (splitTotal > bounty.amount) {
+        uint256 newFees = calcFee(splitTotal);
+        uint256 total = newFees + splitTotal;
+        if (total > bounty.amount) {
             revert InvalidSplits();
         }
 
-        uint256 totalSpend = bounty.amount + calcFee(bounty.amount);
-        uint256 updatedFee = calcFee(splitTotal);
+        bounties[bountyId].amount -= total;
+        feesEarned[bounty.token] += newFees;
 
-        feesEarned[bounty.token] += updatedFee;
-
-        unchecked {
-            token.transfer(bounty.sponsor, totalSpend - splitTotal - updatedFee);
-        }
-
-        delete bounties[bountyId];
-
-        emit BountySettled(bountyId);
+        emit BountyPayments(recipients);
     }
 
     /**
-     * @notice can be called by owner to refund bounty in case of issue
+     * @notice can be called by owner or bounty creator to close bounty and refund
      * @param bountyId id of bounty to refund
      */
-    function refund(uint256 bountyId) external onlyOwner {
+    function close(uint256 bountyId) external {
         Bounty memory bounty = bounties[bountyId];
-        uint256 amountPlusFee = bounty.amount + calcFee(bounty.amount);
-        IERC20(bounty.token).transfer(bounty.sponsor, amountPlusFee);
-
+        IERC20(bounty.token).transfer(bounty.sponsor, bounty.amount);
         delete bounties[bountyId];
 
-        emit BountyRefunded(bountyId);
+        emit BountyClosed(bountyId);
     }
 
     /**

@@ -38,35 +38,6 @@ contract EscrowTest is Test, DataTypes {
         vm.stopPrank();
     }
 
-    function testSettleBounty() public {
-        vm.startPrank(defaultSender);
-        uint256 bountyAmount = 123;
-        helperMintApproveTokens(bountyAmount, defaultSender);
-        uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
-
-        address[] memory recipients = new address[](1);
-        recipients[0] = address(1);
-
-        escrow.settle(newBountyId, recipients, new PostWithSigData[](0));
-        assertTrue(mockToken.balanceOf(address(1)) == bountyAmount);
-
-        // another address can settle as long as its the bounty creator
-        address newSponsor = address(4);
-
-        address[] memory depositors = new address[](1);
-        depositors[0] = newSponsor;
-        vm.stopPrank();
-        escrow.addDepositors(depositors);
-
-        vm.startPrank(newSponsor);
-        helperMintApproveTokens(bountyAmount, newSponsor);
-        newBountyId = escrow.deposit(address(mockToken), bountyAmount);
-
-        escrow.settle(newBountyId, recipients, new PostWithSigData[](0));
-        assertTrue(mockToken.balanceOf(address(1)) == bountyAmount * 2);
-        vm.stopPrank();
-    }
-
     function testFailSettleBountyBadArbiter() public {
         vm.startPrank(defaultSender);
         uint256 bountyAmount = 123;
@@ -76,8 +47,11 @@ contract EscrowTest is Test, DataTypes {
         address[] memory recipients = new address[](1);
         recipients[0] = address(1);
 
+        uint[] memory splits = new uint[](1);
+        splits[0] = 12;
+
         vm.prank(address(5));
-        escrow.settle(newBountyId, recipients, new PostWithSigData[](0));
+        escrow.rankedSettle(newBountyId, recipients, splits, new PostWithSigData[](0));
         vm.stopPrank();
     }
 
@@ -97,6 +71,7 @@ contract EscrowTest is Test, DataTypes {
         splits[0] = 75_000;
         splits[1] = 25_000;
         escrow.rankedSettle(newBountyId, recipients, splits, new PostWithSigData[](0));
+        escrow.close(newBountyId);
 
         uint256 expected1 = 75_000;
         uint256 expected2 = 25_000;
@@ -143,6 +118,7 @@ contract EscrowTest is Test, DataTypes {
         splits[0] = 75_000;
         splits[1] = 25_000;
         escrow.rankedSettle(newBountyId, recipients, splits, new PostWithSigData[](0));
+        escrow.close(newBountyId);
 
         uint256 payout = splits[0] + splits[1];
         uint256 feePaid = (payout * fee) / 10_000;
@@ -221,6 +197,7 @@ contract EscrowTest is Test, DataTypes {
         splits[1] = 25_000;
 
         escrow.rankedSettle(newBountyId, recipients, splits, new PostWithSigData[](0));
+        escrow.close(newBountyId);
 
         uint256 payout = splits[0] + splits[1];
         uint256 feePaid = (payout * fee) / 10_000;

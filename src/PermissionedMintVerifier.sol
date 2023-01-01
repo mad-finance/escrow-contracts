@@ -15,12 +15,7 @@ contract PermissionedMintVerifier is Ownable {
     mapping(uint256 => bool) public usedNonces;
     mapping(uint256 => address) public groupIdCollections;
 
-    event GroupCreated(
-        uint256 groupId,
-        address collection,
-        uint256 lensPubId,
-        uint256 lensProfileId
-    );
+    event GroupCreated(uint256 groupId, address collection, uint256 lensPubId, uint256 lensProfileId);
 
     event NonceUsed(uint256 indexed nonce);
 
@@ -28,16 +23,8 @@ contract PermissionedMintVerifier is Ownable {
         setNotary(_msgSender());
     }
 
-    function createGroup(
-        uint256 groupId,
-        address dcntCollection,
-        uint256 lensPubId,
-        uint256 lensProfileId
-    ) external {
-        require(
-            groupIdCollections[groupId] == address(0),
-            "group already exists"
-        );
+    function createGroup(uint256 groupId, address dcntCollection, uint256 lensPubId, uint256 lensProfileId) external {
+        require(groupIdCollections[groupId] == address(0), "group already exists");
 
         groupIdCollections[groupId] = dcntCollection;
 
@@ -45,15 +32,8 @@ contract PermissionedMintVerifier is Ownable {
     }
 
     /// @notice allows a user to mint an nft
-    function mint(
-        address recipient,
-        uint256 nonce,
-        uint256 groupId,
-        bytes memory signature
-    ) public {
-        bytes32 hash = ECDSA.toEthSignedMessageHash(
-            keccak256(abi.encode(address(this), recipient, nonce))
-        );
+    function mint(address recipient, uint256 nonce, uint256 groupId, bytes memory signature) public {
+        bytes32 hash = ECDSA.toEthSignedMessageHash(keccak256(abi.encode(address(this), recipient, nonce)));
 
         if (notary != ECDSA.recover(hash, signature)) {
             revert InvalidNotarization();
