@@ -42,5 +42,5 @@ An nft contract with unlimited supply that requires a signature from the contrac
 ```bash
 source .env
 
-forge script script/Deploy.s.sol:DeployScript --rpc-url $MUMBAI_RPC_URL --broadcast --verify -vvvv
+forge script script/Deploy.s.sol:DeployScript --rpc-url mumbai --broadcast --verify -vvvv
 ```
