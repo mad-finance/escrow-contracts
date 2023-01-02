@@ -47,7 +47,7 @@ contract EscrowTest is Test, DataTypes {
         address[] memory recipients = new address[](1);
         recipients[0] = address(1);
 
-        uint[] memory splits = new uint[](1);
+        uint256[] memory splits = new uint[](1);
         splits[0] = 12;
 
         vm.prank(address(5));
