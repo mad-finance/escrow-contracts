@@ -79,32 +79,52 @@ contract LensExtension is DataTypes {
     }
 
     function postWithSigBatch(PostWithSigData[] calldata data) public {
-        for (uint256 i = 0; i < data.length; ++i) {
+        uint256 length = data.length;
+        for (uint256 i = 0; i < length;) {
             lensHub.postWithSig(data[i]);
+            unchecked {
+                ++i;
+            }
         }
     }
 
     function mirrorWithSigBatch(MirrorWithSigData[] calldata data) public {
-        for (uint256 i = 0; i < data.length; ++i) {
+        uint256 length = data.length;
+        for (uint256 i = 0; i < length;) {
             lensHub.mirrorWithSig(data[i]);
+            unchecked {
+                ++i;
+            }
         }
     }
 
     function commentWithSigBatch(CommentWithSigData[] calldata data) public {
-        for (uint256 i = 0; i < data.length; ++i) {
+        uint256 length = data.length;
+        for (uint256 i = 0; i < length;) {
             lensHub.commentWithSig(data[i]);
+            unchecked {
+                ++i;
+            }
         }
     }
 
     function followWithSigBatch(FollowWithSigData[] calldata data) public {
-        for (uint256 i = 0; i < data.length; ++i) {
+        uint256 length = data.length;
+        for (uint256 i = 0; i < length;) {
             lensHub.followWithSig(data[i]);
+            unchecked {
+                ++i;
+            }
         }
     }
 
     function collectWithSigBatch(CollectWithSigData[] calldata data) public {
-        for (uint256 i = 0; i < data.length; ++i) {
+        uint256 length = data.length;
+        for (uint256 i = 0; i < length;) {
             lensHub.collectWithSig(data[i]);
+            unchecked {
+                ++i;
+            }
         }
     }
 }

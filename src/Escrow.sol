@@ -92,9 +92,13 @@ contract Escrow is Ownable, LensExtension {
 
         uint256 splitTotal;
         IERC20 token = IERC20(bounty.token);
-        for (uint256 i = 0; i < recipients.length; ++i) {
+        uint256 length = recipients.length;
+        for (uint256 i = 0; i < length;) {
             splitTotal += splits[i];
             token.transfer(recipients[i], splits[i]);
+            unchecked {
+                ++i;
+            }
         }
 
         uint256 newFees = calcFee(splitTotal);
@@ -140,17 +144,25 @@ contract Escrow is Ownable, LensExtension {
 
     /// @notice withdraws all accumulated fees
     function withdrawFees(address[] calldata _tokens) external onlyOwner {
-        for (uint256 i = 0; i < _tokens.length; ++i) {
+        uint256 length = _tokens.length;
+        for (uint256 i = 0; i < length;) {
             uint256 contractBal = feesEarned[_tokens[i]];
             feesEarned[_tokens[i]] = 0;
             IERC20(_tokens[i]).transfer(owner(), contractBal);
+            unchecked {
+                ++i;
+            }
         }
     }
 
     /// @notice add list of depositors to allowlist
     function addDepositors(address[] calldata _allowedDepositors) external onlyOwner {
-        for (uint8 i = 0; i < _allowedDepositors.length; ++i) {
+        uint256 length = _allowedDepositors.length;
+        for (uint8 i = 0; i < length;) {
             allowedDepositors[_allowedDepositors[i]] = true;
+            unchecked {
+                ++i;
+            }
         }
 
         emit DepositorsAdded(_allowedDepositors);
@@ -158,8 +170,12 @@ contract Escrow is Ownable, LensExtension {
 
     /// @notice remove list of depositors from allowlist
     function removeDepositors(address[] calldata _allowedDepositors) external onlyOwner {
-        for (uint8 i = 0; i < _allowedDepositors.length; ++i) {
+        uint256 length = _allowedDepositors.length;
+        for (uint8 i = 0; i < length;) {
             allowedDepositors[_allowedDepositors[i]] = false;
+            unchecked {
+                ++i;
+            }
         }
 
         emit DepositorsRemoved(_allowedDepositors);
