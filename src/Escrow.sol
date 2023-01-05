@@ -91,11 +91,9 @@ contract Escrow is Ownable, LensExtension {
         }
 
         uint256 splitTotal;
-        IERC20 token = IERC20(bounty.token);
         uint256 length = recipients.length;
         for (uint256 i = 0; i < length;) {
             splitTotal += splits[i];
-            token.transfer(recipients[i], splits[i]);
             unchecked {
                 ++i;
             }
@@ -110,6 +108,14 @@ contract Escrow is Ownable, LensExtension {
         bounties[bountyId].amount -= total;
         feesEarned[bounty.token] += newFees;
 
+        IERC20 token = IERC20(bounty.token);
+        for (uint256 i = 0; i < length;) {
+            token.transfer(recipients[i], splits[i]);
+            unchecked {
+                ++i;
+            }
+        }
+
         emit BountyPayments(recipients);
     }
 
@@ -119,8 +125,10 @@ contract Escrow is Ownable, LensExtension {
      */
     function close(uint256 bountyId) external {
         Bounty memory bounty = bounties[bountyId];
-        IERC20(bounty.token).transfer(bounty.sponsor, bounty.amount);
+        address sponsor = bounty.sponsor;
+        uint256 amount = bounty.amount;
         delete bounties[bountyId];
+        IERC20(bounty.token).transfer(sponsor, amount);
 
         emit BountyClosed(bountyId);
     }
@@ -138,7 +146,6 @@ contract Escrow is Ownable, LensExtension {
     /// @notice sets the protocol fee (in basis points). Close all outstanding bounties before calling
     function setProtocolFee(uint256 _protocolFee) external onlyOwner {
         protocolFee = _protocolFee;
-
         emit SetProtocolFee(_protocolFee);
     }
 
