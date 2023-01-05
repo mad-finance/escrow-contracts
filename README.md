@@ -44,3 +44,11 @@ source .env
 
 forge script script/Deploy.s.sol:DeployScript --rpc-url mumbai --broadcast --verify -vvvv
 ```
+
+## Withdraw Fees
+
+```bash
+source .env
+
+forge script script/WithdrawFees.s.sol:WithdrawFeesScript --rpc-url mumbai --broadcast -vvvv
+```
