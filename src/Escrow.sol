@@ -30,7 +30,7 @@ contract Escrow is Ownable, LensExtension {
 
     // EVENTS
     event BountyCreated(uint256 bountyId, Bounty bounty);
-    event BountyPayments(address[] recipients);
+    event BountyPayments(uint bountyId, address[] recipients);
     event BountyClosed(uint256 bountyId);
     event DepositorsAdded(address[] depositors);
     event DepositorsRemoved(address[] depositors);
@@ -116,7 +116,7 @@ contract Escrow is Ownable, LensExtension {
             }
         }
 
-        emit BountyPayments(recipients);
+        emit BountyPayments(bountyId, recipients);
     }
 
     /**
@@ -124,11 +124,14 @@ contract Escrow is Ownable, LensExtension {
      * @param bountyId id of bounty to refund
      */
     function close(uint256 bountyId) external {
-        Bounty memory bounty = bounties[bountyId];
-        address sponsor = bounty.sponsor;
-        uint256 amount = bounty.amount;
+        if (_msgSender() != bounties[bountyId].sponsor) {
+            revert NotArbiter();
+        }
+        address sponsor = bounties[bountyId].sponsor;
+        uint256 amount = bounties[bountyId].amount;
+        address token = bounties[bountyId].token;
         delete bounties[bountyId];
-        IERC20(bounty.token).transfer(sponsor, amount);
+        IERC20(token).transfer(sponsor, amount);
 
         emit BountyClosed(bountyId);
     }
