@@ -1,84 +1,29 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.13;
+import "lens/libraries/DataTypes.sol";
 
-interface DataTypes {
-    struct EIP712Signature {
-        uint8 v;
-        bytes32 r;
-        bytes32 s;
-        uint256 deadline;
-    }
+pragma solidity ^0.8.10;
 
-    struct PostWithSigData {
-        uint256 profileId;
-        string contentURI;
-        address collectModule;
-        bytes collectModuleInitData;
-        address referenceModule;
-        bytes referenceModuleInitData;
-        EIP712Signature sig;
-    }
+interface ILensHub {
+    function postWithSig(DataTypes.PostWithSigData calldata vars) external returns (uint256);
 
-    struct MirrorWithSigData {
-        uint256 profileId;
-        uint256 profileIdPointed;
-        uint256 pubIdPointed;
-        bytes referenceModuleData;
-        address referenceModule;
-        bytes referenceModuleInitData;
-        EIP712Signature sig;
-    }
+    function mirrorWithSig(DataTypes.MirrorWithSigData calldata vars) external returns (uint256);
 
-    struct CommentWithSigData {
-        uint256 profileId;
-        string contentURI;
-        uint256 profileIdPointed;
-        uint256 pubIdPointed;
-        bytes referenceModuleData;
-        address collectModule;
-        bytes collectModuleInitData;
-        address referenceModule;
-        bytes referenceModuleInitData;
-        EIP712Signature sig;
-    }
+    function commentWithSig(DataTypes.CommentWithSigData calldata vars) external returns (uint256);
 
-    struct FollowWithSigData {
-        address follower;
-        uint256[] profileIds;
-        bytes[] datas;
-        EIP712Signature sig;
-    }
+    function followWithSig(DataTypes.FollowWithSigData calldata vars) external returns (uint256);
 
-    struct CollectWithSigData {
-        address collector;
-        uint256 profileId;
-        uint256 pubId;
-        bytes data;
-        EIP712Signature sig;
-    }
+    function collectWithSig(DataTypes.CollectWithSigData calldata vars) external returns (uint256);
 }
 
-interface ILensHub is DataTypes {
-    function postWithSig(PostWithSigData calldata vars) external returns (uint256);
-
-    function mirrorWithSig(MirrorWithSigData calldata vars) external returns (uint256);
-
-    function commentWithSig(CommentWithSigData calldata vars) external returns (uint256);
-
-    function followWithSig(FollowWithSigData calldata vars) external returns (uint256);
-
-    function collectWithSig(CollectWithSigData calldata vars) external returns (uint256);
-}
-
-contract LensExtension is DataTypes {
+contract LensExtension {
     ILensHub internal lensHub;
 
     constructor(address _lensHub) {
         lensHub = ILensHub(_lensHub);
     }
 
-    function postWithSigBatch(PostWithSigData[] calldata data) public {
+    function postWithSigBatch(DataTypes.PostWithSigData[] calldata data) public {
         uint256 length = data.length;
         for (uint256 i = 0; i < length;) {
             lensHub.postWithSig(data[i]);
@@ -88,7 +33,7 @@ contract LensExtension is DataTypes {
         }
     }
 
-    function mirrorWithSigBatch(MirrorWithSigData[] calldata data) public {
+    function mirrorWithSigBatch(DataTypes.MirrorWithSigData[] calldata data) public {
         uint256 length = data.length;
         for (uint256 i = 0; i < length;) {
             lensHub.mirrorWithSig(data[i]);
@@ -98,7 +43,7 @@ contract LensExtension is DataTypes {
         }
     }
 
-    function commentWithSigBatch(CommentWithSigData[] calldata data) public {
+    function commentWithSigBatch(DataTypes.CommentWithSigData[] calldata data) public {
         uint256 length = data.length;
         for (uint256 i = 0; i < length;) {
             lensHub.commentWithSig(data[i]);
@@ -108,7 +53,7 @@ contract LensExtension is DataTypes {
         }
     }
 
-    function followWithSigBatch(FollowWithSigData[] calldata data) public {
+    function followWithSigBatch(DataTypes.FollowWithSigData[] calldata data) public {
         uint256 length = data.length;
         for (uint256 i = 0; i < length;) {
             lensHub.followWithSig(data[i]);
@@ -118,7 +63,7 @@ contract LensExtension is DataTypes {
         }
     }
 
-    function collectWithSigBatch(CollectWithSigData[] calldata data) public {
+    function collectWithSigBatch(DataTypes.CollectWithSigData[] calldata data) public {
         uint256 length = data.length;
         for (uint256 i = 0; i < length;) {
             lensHub.collectWithSig(data[i]);

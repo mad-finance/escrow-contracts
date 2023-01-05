@@ -6,7 +6,7 @@
  *  \ \_____\\/\_____\\ \_____\\ \_\ \_\\ \_____\\ \__/".~\_\
  *   \/_____/ \/_____/ \/_____/ \/_/ /_/ \/_____/ \/_/   \/_/
  */
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.10;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/access/Ownable.sol";
@@ -30,7 +30,7 @@ contract Escrow is Ownable, LensExtension {
 
     // EVENTS
     event BountyCreated(uint256 bountyId, Bounty bounty);
-    event BountyPayments(uint bountyId, address[] recipients);
+    event BountyPayments(uint256 bountyId, address[] recipients);
     event BountyClosed(uint256 bountyId);
     event DepositorsAdded(address[] depositors);
     event DepositorsRemoved(address[] depositors);
@@ -78,7 +78,7 @@ contract Escrow is Ownable, LensExtension {
         uint256 bountyId,
         address[] calldata recipients,
         uint256[] calldata splits,
-        PostWithSigData[] calldata posts
+        DataTypes.PostWithSigData[] calldata posts
     ) external {
         _rankedSettle(bountyId, recipients, splits);
         postWithSigBatch(posts);

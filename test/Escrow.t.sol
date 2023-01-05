@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.10;
 
 import "forge-std/Test.sol";
 import "../src/Escrow.sol";
 import "../src/mocks/MockToken.sol";
 import "../src/extensions/LensExtension.sol";
 
-contract EscrowTest is Test, DataTypes {
+contract EscrowTest is Test {
     Escrow escrow;
     MockToken mockToken;
     address defaultSender = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
@@ -51,7 +51,7 @@ contract EscrowTest is Test, DataTypes {
         splits[0] = 12;
 
         vm.prank(address(5));
-        escrow.rankedSettle(newBountyId, recipients, splits, new PostWithSigData[](0));
+        escrow.rankedSettle(newBountyId, recipients, splits, new DataTypes.PostWithSigData[](0));
         vm.stopPrank();
     }
 
@@ -70,7 +70,7 @@ contract EscrowTest is Test, DataTypes {
         uint256[] memory splits = new uint256[](2);
         splits[0] = 75_000;
         splits[1] = 25_000;
-        escrow.rankedSettle(newBountyId, recipients, splits, new PostWithSigData[](0));
+        escrow.rankedSettle(newBountyId, recipients, splits, new DataTypes.PostWithSigData[](0));
         escrow.close(newBountyId);
 
         uint256 expected1 = 75_000;
@@ -117,7 +117,7 @@ contract EscrowTest is Test, DataTypes {
         uint256[] memory splits = new uint256[](2);
         splits[0] = 75_000;
         splits[1] = 25_000;
-        escrow.rankedSettle(newBountyId, recipients, splits, new PostWithSigData[](0));
+        escrow.rankedSettle(newBountyId, recipients, splits, new DataTypes.PostWithSigData[](0));
         escrow.close(newBountyId);
 
         uint256 payout = splits[0] + splits[1];
@@ -151,7 +151,7 @@ contract EscrowTest is Test, DataTypes {
         splits[0] = 75_000;
         splits[1] = 75_000;
 
-        escrow.rankedSettle(newBountyId, recipients, splits, new PostWithSigData[](0));
+        escrow.rankedSettle(newBountyId, recipients, splits, new DataTypes.PostWithSigData[](0));
         vm.stopPrank();
     }
 
@@ -172,7 +172,7 @@ contract EscrowTest is Test, DataTypes {
         uint256[] memory splits = new uint256[](2);
         splits[0] = 75_000;
 
-        escrow.rankedSettle(newBountyId, recipients, splits, new PostWithSigData[](0));
+        escrow.rankedSettle(newBountyId, recipients, splits, new DataTypes.PostWithSigData[](0));
         vm.stopPrank();
     }
 
@@ -196,7 +196,7 @@ contract EscrowTest is Test, DataTypes {
         splits[0] = 75_000;
         splits[1] = 25_000;
 
-        escrow.rankedSettle(newBountyId, recipients, splits, new PostWithSigData[](0));
+        escrow.rankedSettle(newBountyId, recipients, splits, new DataTypes.PostWithSigData[](0));
         escrow.close(newBountyId);
 
         uint256 payout = splits[0] + splits[1];
