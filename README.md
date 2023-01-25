@@ -52,3 +52,11 @@ source .env
 
 forge script script/WithdrawFees.s.sol:WithdrawFeesScript --rpc-url mumbai --broadcast -vvvv
 ```
+
+## Add Depositor
+
+```bash
+source .env
+
+forge script script/AddDep.s.sol:AddDepScript --rpc-url polygon --broadcast -vvvv
+```
