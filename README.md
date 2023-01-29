@@ -37,26 +37,17 @@ Functions:
 
 An nft contract with unlimited supply that requires a signature from the contract owner to mint a token.
 
-## Deploy Call
+## Scripts
 
 ```bash
 source .env
 
-forge script script/Deploy.s.sol:DeployScript --rpc-url mumbai --broadcast --verify -vvvv
-```
+# deploy escrow contract
+forge script script/Deploy.s.sol:DeployScript --rpc-url polygon --broadcast --verify -vvvv
 
-## Withdraw Fees
+# withdraw fees
+forge script script/WithdrawFees.s.sol:WithdrawFeesScript --rpc-url polygon --broadcast -vvvv
 
-```bash
-source .env
-
-forge script script/WithdrawFees.s.sol:WithdrawFeesScript --rpc-url mumbai --broadcast -vvvv
-```
-
-## Add Depositor
-
-```bash
-source .env
-
-forge script script/AddDep.s.sol:AddDepScript --rpc-url polygon --broadcast -vvvv
+# add despoitor
+forge script script/AddDepositors.s.sol:AddDepositorsScript --rpc-url polygon --broadcast -vvvv
 ```
