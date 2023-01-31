@@ -15,7 +15,8 @@ contract DeployScript is Script {
         address lensHubPolygon = 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d;
         address lensHubMumbai = 0x60Ae865ee4C725cd04353b5AAb364553f56ceF82;
         uint256 protocolFee = 10_00;
-        EscrowV2 e = new EscrowV2(lensHubMumbai, protocolFee);
+        uint lastBountyId = 17;
+        EscrowV2 e = new EscrowV2(lensHubMumbai, protocolFee, lastBountyId);
 
         // remove for mainnet
         e.openTheGates();

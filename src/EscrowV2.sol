@@ -47,11 +47,12 @@ contract EscrowV2 is Ownable, LensExtension {
     error DepositorNotAllowed();
     error InvalidSplits();
 
-    constructor(address _lensHub, uint256 _protocolFee)
+    constructor(address _lensHub, uint256 _protocolFee, uint _startId)
         Ownable()
         LensExtension(_lensHub)
     {
         protocolFee = _protocolFee;
+        count = _startId;
     }
 
     // PUBLIC FUNCTIONS

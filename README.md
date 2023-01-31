@@ -45,6 +45,9 @@ source .env
 # deploy escrow contract
 forge script script/Deploy.s.sol:DeployScript --rpc-url polygon --broadcast --verify -vvvv
 
+# deploy escrow contract v2
+forge script script/DeployV2.s.sol:DeployScript --rpc-url polygon --broadcast --verify -vvvv
+
 # withdraw fees
 forge script script/WithdrawFees.s.sol:WithdrawFeesScript --rpc-url polygon --broadcast -vvvv
 

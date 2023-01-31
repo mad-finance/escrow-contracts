@@ -12,7 +12,7 @@ contract EscrowV2Test is Test {
     address defaultSender = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
 
     function setUp() public {
-        escrow = new EscrowV2(address(4545454545), 0);
+        escrow = new EscrowV2(address(4545454545), 0, 0);
         mockToken = new MockToken();
 
         address[] memory depositors = new address[](1);
@@ -139,7 +139,7 @@ contract EscrowV2Test is Test {
         vm.startPrank(defaultSender);
         uint256 fee = 500;
         uint256 bountyAmount = 100_000_000;
-        escrow = new EscrowV2(address(4545454545), fee);
+        escrow = new EscrowV2(address(4545454545), fee, 0);
         escrow.openTheGates();
         helperMintApproveTokens(
             bountyAmount + ((500 * bountyAmount) / 10_000),
@@ -238,7 +238,7 @@ contract EscrowV2Test is Test {
         vm.startPrank(defaultSender);
         uint256 fee = 500;
         uint256 bountyAmount = 100_000_000;
-        escrow = new EscrowV2(address(4545454545), fee);
+        escrow = new EscrowV2(address(4545454545), fee, 0);
         escrow.openTheGates();
         helperMintApproveTokens(
             bountyAmount + ((500 * bountyAmount) / 10_000),
