@@ -53,4 +53,7 @@ forge script script/WithdrawFees.s.sol:WithdrawFeesScript --rpc-url polygon --br
 
 # add despoitor
 forge script script/AddDepositors.s.sol:AddDepositorsScript --rpc-url polygon --broadcast -vvvv
+
+#when verification fails
+forge verify-contract --chain-id 137 --num-of-optimizations 20000 --watch --constructor-args $(cast abi-encode "constructor(address,uint256,uint256)" "0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d" 1000 4) --compiler-version v0.8.10+commit.fc410830 <contract_address> src/EscrowV2.sol:EscrowV2 <etherscan_key>
 ```
