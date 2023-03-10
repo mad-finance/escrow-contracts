@@ -11,6 +11,7 @@ pragma solidity ^0.8.10;
 import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/access/Ownable.sol";
 import "./extensions/LensExtension.sol";
+import "./interfaces/IMadSBT.sol";
 
 contract EscrowV3 is Ownable, LensExtension {
     uint256 public protocolFee; // basis points
@@ -24,6 +25,11 @@ contract EscrowV3 is Ownable, LensExtension {
         address sponsor;
         address token;
     }
+
+    // MADSBT POINTS
+    IMadSBT madSBT;
+    uint collectionId;
+    uint profileId;
 
     // EVENTS
     event BountyCreated(uint256 bountyId, Bounty bounty);
@@ -57,17 +63,22 @@ contract EscrowV3 is Ownable, LensExtension {
      * @param token token to deposit
      * @param amount amount of token to deposit
      */
-    function deposit(address token, uint256 amount)
-        external
-        returns (uint256 bountyId)
-    {
+    function deposit(
+        address token,
+        uint256 amount
+    ) external returns (uint256 bountyId) {
         uint256 total = amount + calcFee(amount);
         Bounty memory newBounty = Bounty(total, _msgSender(), token);
         bounties[++count] = newBounty;
 
         IERC20(token).transferFrom(_msgSender(), address(this), total);
 
-        // TODO: update points
+        madSBT.handleRewardsUpdate(
+            _msgSender(),
+            collectionId,
+            profileId,
+            100
+        );
 
         emit BountyCreated(count, newBounty);
         return count;
@@ -103,8 +114,6 @@ contract EscrowV3 is Ownable, LensExtension {
         uint256 splitTotal;
         uint256 length = recipients.length;
         for (uint256 i = 0; i < length; ) {
-            // TODO: check amount is splits[i]
-
             splitTotal += splits[i];
             unchecked {
                 ++i;
@@ -124,7 +133,12 @@ contract EscrowV3 is Ownable, LensExtension {
         for (uint256 i = 0; i < length; ) {
             token.transfer(recipients[i], splits[i]);
 
-            // TODO: update points
+            madSBT.handleRewardsUpdate(
+                recipients[i],
+                collectionId,
+                profileId,
+                25
+            );
 
             unchecked {
                 ++i;
@@ -190,6 +204,16 @@ contract EscrowV3 is Ownable, LensExtension {
                 ++i;
             }
         }
+    }
+
+    function setMadSBT(
+        address _madSBT,
+        uint _collectionId,
+        uint _profileId
+    ) external onlyOwner {
+        madSBT = IMadSBT(_madSBT);
+        collectionId = _collectionId;
+        profileId = _profileId;
     }
 
     /// @notice fallback function to prevent accidental ether transfers

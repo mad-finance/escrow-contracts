@@ -22,6 +22,12 @@ contract DeployScript is Script {
 
         EscrowV3 e = new EscrowV3(lensHubPolygon, protocolFee, lastBountyId);
 
+        // TODO: fill these in
+        address _madSBT = address(0);
+        uint256 _collectionId = 1;
+        uint256 _profileId = 1;
+        e.setMadSBT(_madSBT, _collectionId, _profileId);
+
         vm.stopBroadcast();
     }
 }

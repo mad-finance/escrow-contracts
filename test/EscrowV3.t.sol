@@ -4,16 +4,22 @@ pragma solidity ^0.8.10;
 import "forge-std/Test.sol";
 import "../src/EscrowV3.sol";
 import "../src/mocks/MockToken.sol";
+import "../src/mocks/MockMadSBT.sol";
 import "../src/extensions/LensExtension.sol";
 
 contract EscrowV3Test is Test {
     EscrowV3 escrow;
     MockToken mockToken;
+    MockMadSBT mockMadSBT;
     address defaultSender = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
 
     function setUp() public {
         escrow = new EscrowV3(address(4545454545), 0, 0);
+
+        mockMadSBT = new MockMadSBT();
         mockToken = new MockToken();
+
+        escrow.setMadSBT(address(mockMadSBT), 1, 1);
     }
 
     function helperMintApproveTokens(uint256 bountyAmount, address recipient)
@@ -126,6 +132,7 @@ contract EscrowV3Test is Test {
         uint256 fee = 500;
         uint256 bountyAmount = 100_000_000;
         escrow = new EscrowV3(address(4545454545), fee, 0);
+        escrow.setMadSBT(address(mockMadSBT), 1, 1);
         helperMintApproveTokens(
             bountyAmount + ((500 * bountyAmount) / 10_000),
             defaultSender
@@ -224,6 +231,7 @@ contract EscrowV3Test is Test {
         uint256 fee = 500;
         uint256 bountyAmount = 100_000_000;
         escrow = new EscrowV3(address(4545454545), fee, 0);
+        escrow.setMadSBT(address(mockMadSBT), 1, 1);
         helperMintApproveTokens(
             bountyAmount + ((500 * bountyAmount) / 10_000),
             defaultSender
