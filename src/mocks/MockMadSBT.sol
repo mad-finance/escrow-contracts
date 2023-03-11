@@ -1,20 +1,24 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.10;
 
-import "../interfaces/IMadSBT.sol";
+import "madfi-protocol/interfaces/IMadSBT.sol";
 
 /**
  * Mock MADSBT for testing
  */
-contract MockMadSBT is IMadSBT {
+contract MockMadSBT {
     mapping(address => uint128) public points;
 
     function handleRewardsUpdate(
         address account,
-        uint256 collectionId,
-        uint256 profileId,
-        uint128 amount
+        uint256, // collectionId
+        uint256, // profileId
+        IMadSBT.Action rewardEnum
     ) external {
-        points[account] += amount;
+        if (rewardEnum == IMadSBT.Action.CREATE_BOUNTY) {
+            points[account] += 100;
+        } else if (rewardEnum == IMadSBT.Action.ACCEPTED_BID) {
+            points[account] += 25;
+        }
     }
 }

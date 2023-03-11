@@ -10,8 +10,8 @@ pragma solidity ^0.8.10;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/access/Ownable.sol";
+import "madfi-protocol/interfaces/IMadSBT.sol";
 import "./extensions/LensExtension.sol";
-import "./interfaces/IMadSBT.sol";
 
 contract EscrowV3 is Ownable, LensExtension {
     uint256 public protocolFee; // basis points
@@ -77,7 +77,7 @@ contract EscrowV3 is Ownable, LensExtension {
             _msgSender(),
             collectionId,
             profileId,
-            100
+            IMadSBT.Action.CREATE_BOUNTY
         );
 
         emit BountyCreated(count, newBounty);
@@ -137,7 +137,7 @@ contract EscrowV3 is Ownable, LensExtension {
                 recipients[i],
                 collectionId,
                 profileId,
-                25
+                IMadSBT.Action.ACCEPTED_BID
             );
 
             unchecked {

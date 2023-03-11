@@ -1,2 +1,3 @@
 openzeppelin/=lib/openzeppelin-contracts/contracts
 lens/=lib/core/contracts
+madfi-protocol/=lib/madfi-protocol-public/contracts
