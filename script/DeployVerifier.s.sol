@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import "forge-std/Script.sol";
 import "../src/PermissionedMintVerifier.sol";
 
-contract DeployScript is Script {
+contract DeployVerifier is Script {
     function setUp() public {}
 
     function run() public {

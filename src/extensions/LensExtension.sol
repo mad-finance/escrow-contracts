@@ -1,72 +1,103 @@
 // SPDX-License-Identifier: MIT
+/*
 
-import "lens/libraries/DataTypes.sol";
+__/\\\______________/\\\\\\\\\\\\\\\__/\\\\\_____/\\\_____/\\\\\\\\\\\______________/\\\________/\\\____/\\\\\\\\\_____        
+ _\/\\\_____________\/\\\///////////__\/\\\\\\___\/\\\___/\\\/////////\\\___________\/\\\_______\/\\\__/\\\///////\\\___       
+  _\/\\\_____________\/\\\_____________\/\\\/\\\__\/\\\__\//\\\______\///____________\//\\\______/\\\__\///______\//\\\__      
+   _\/\\\_____________\/\\\\\\\\\\\_____\/\\\//\\\_\/\\\___\////\\\____________________\//\\\____/\\\_____________/\\\/___     
+    _\/\\\_____________\/\\\///////______\/\\\\//\\\\/\\\______\////\\\__________________\//\\\__/\\\___________/\\\//_____    
+     _\/\\\_____________\/\\\_____________\/\\\_\//\\\/\\\_________\////\\\________________\//\\\/\\\_________/\\\//________   
+      _\/\\\_____________\/\\\_____________\/\\\__\//\\\\\\__/\\\______\//\\\________________\//\\\\\________/\\\/___________  
+       _\/\\\\\\\\\\\\\\\_\/\\\\\\\\\\\\\\\_\/\\\___\//\\\\\_\///\\\\\\\\\\\/__________________\//\\\________/\\\\\\\\\\\\\\\_ 
+        _\///////////////__\///////////////__\///_____\/////____\///////////_____________________\///________\///////////////__
+*/
 
 pragma solidity ^0.8.10;
 
-interface ILensHub {
-    function postWithSig(DataTypes.PostWithSigData calldata vars) external returns (uint256);
-
-    function mirrorWithSig(DataTypes.MirrorWithSigData calldata vars) external returns (uint256);
-
-    function commentWithSig(DataTypes.CommentWithSigData calldata vars) external returns (uint256);
-
-    function followWithSig(DataTypes.FollowWithSigData calldata vars) external returns (uint256);
-
-    function collectWithSig(DataTypes.CollectWithSigData calldata vars) external returns (uint256);
-}
+import "lens/interfaces/ILensProtocol.sol";
 
 contract LensExtension {
-    ILensHub internal lensHub;
+    ILensProtocol internal lensHub;
+
+    // follow data isn't organized as a struct on the lens hub so I'm doing it here
+    struct FollowWithSigData {
+        uint256 followerProfileId;
+        uint256[] idsOfProfilesToFollow;
+        uint256[] followTokenIds;
+        bytes[] datas;
+    }
 
     constructor(address _lensHub) {
-        lensHub = ILensHub(_lensHub);
+        lensHub = ILensProtocol(_lensHub);
     }
 
-    function postWithSigBatch(DataTypes.PostWithSigData[] calldata data) public {
-        uint256 length = data.length;
+    function postWithSigBatch(Types.PostParams[] calldata postParams, Types.EIP712Signature[] calldata signatures)
+        public
+    {
+        require(postParams.length == signatures.length, "LensExtension: invalid length");
+        uint256 length = signatures.length;
         for (uint256 i = 0; i < length;) {
-            lensHub.postWithSig(data[i]);
+            lensHub.postWithSig(postParams[i], signatures[i]);
             unchecked {
                 ++i;
             }
         }
     }
 
-    function mirrorWithSigBatch(DataTypes.MirrorWithSigData[] calldata data) public {
-        uint256 length = data.length;
+    function mirrorWithSigBatch(Types.MirrorParams[] calldata mirrorParams, Types.EIP712Signature[] calldata signatures)
+        public
+    {
+        require(mirrorParams.length == signatures.length, "LensExtension: invalid length");
+        uint256 length = signatures.length;
         for (uint256 i = 0; i < length;) {
-            lensHub.mirrorWithSig(data[i]);
+            lensHub.mirrorWithSig(mirrorParams[i], signatures[i]);
             unchecked {
                 ++i;
             }
         }
     }
 
-    function commentWithSigBatch(DataTypes.CommentWithSigData[] calldata data) public {
-        uint256 length = data.length;
+    function commentWithSigBatch(
+        Types.CommentParams[] calldata commentParams,
+        Types.EIP712Signature[] calldata signatures
+    ) public {
+        require(commentParams.length == signatures.length, "LensExtension: invalid length");
+        uint256 length = signatures.length;
         for (uint256 i = 0; i < length;) {
-            lensHub.commentWithSig(data[i]);
+            lensHub.commentWithSig(commentParams[i], signatures[i]);
             unchecked {
                 ++i;
             }
         }
     }
 
-    function followWithSigBatch(DataTypes.FollowWithSigData[] calldata data) public {
-        uint256 length = data.length;
+    function followWithSigBatch(FollowWithSigData[] calldata followParams, Types.EIP712Signature[] calldata signatures)
+        public
+    {
+        require(followParams.length == signatures.length, "LensExtension: invalid length");
+        uint256 length = signatures.length;
         for (uint256 i = 0; i < length;) {
-            lensHub.followWithSig(data[i]);
+            lensHub.followWithSig(
+                followParams[i].followerProfileId,
+                followParams[i].idsOfProfilesToFollow,
+                followParams[i].followTokenIds,
+                followParams[i].datas,
+                signatures[i]
+            );
             unchecked {
                 ++i;
             }
         }
     }
 
-    function collectWithSigBatch(DataTypes.CollectWithSigData[] calldata data) public {
-        uint256 length = data.length;
+    function collectWithSigBatch(
+        Types.CollectParams[] calldata collectParams,
+        Types.EIP712Signature[] calldata signatures
+    ) public {
+        require(collectParams.length == signatures.length, "LensExtension: invalid length");
+        uint256 length = signatures.length;
         for (uint256 i = 0; i < length;) {
-            lensHub.collectWithSig(data[i]);
+            lensHub.collectWithSig(collectParams[i], signatures[i]);
             unchecked {
                 ++i;
             }

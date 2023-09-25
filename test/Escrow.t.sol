@@ -4,20 +4,22 @@ pragma solidity ^0.8.10;
 import "forge-std/Test.sol";
 import "../src/Escrow.sol";
 import "../src/mocks/MockToken.sol";
+import "../src/mocks/MockMadSBT.sol";
 import "../src/extensions/LensExtension.sol";
 
 contract EscrowTest is Test {
     Escrow escrow;
     MockToken mockToken;
+    MockMadSBT mockMadSBT;
     address defaultSender = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
 
     function setUp() public {
-        escrow = new Escrow(address(4545454545), 0);
+        escrow = new Escrow(address(4545454545), 0, 0);
+
+        mockMadSBT = new MockMadSBT();
         mockToken = new MockToken();
 
-        address[] memory depositors = new address[](1);
-        depositors[0] = defaultSender;
-        escrow.addDepositors(depositors);
+        escrow.setMadSBT(address(mockMadSBT), 1, 1);
     }
 
     function helperMintApproveTokens(uint256 bountyAmount, address recipient) public {
@@ -38,6 +40,26 @@ contract EscrowTest is Test {
         vm.stopPrank();
     }
 
+    function testTopUp() public {
+        vm.startPrank(defaultSender);
+        uint256 bountyAmount = 123;
+        helperMintApproveTokens(bountyAmount, defaultSender);
+        uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
+        assertTrue(newBountyId == 1);
+        (uint256 amount, address sponsor, address token) = escrow.bounties(newBountyId);
+        assertTrue(token == address(mockToken));
+        assertTrue(amount == bountyAmount);
+        assertTrue(sponsor == defaultSender);
+
+        // Top up
+        uint256 topUpAmount = 100;
+        helperMintApproveTokens(topUpAmount, defaultSender);
+        escrow.topUp(newBountyId, topUpAmount);
+        (amount, sponsor, token) = escrow.bounties(newBountyId);
+        assertTrue(amount == bountyAmount + topUpAmount);
+        vm.stopPrank();
+    }
+
     function testFailSettleBountyBadArbiter() public {
         vm.startPrank(defaultSender);
         uint256 bountyAmount = 123;
@@ -47,11 +69,11 @@ contract EscrowTest is Test {
         address[] memory recipients = new address[](1);
         recipients[0] = address(1);
 
-        uint256[] memory splits = new uint[](1);
+        uint256[] memory splits = new uint256[](1);
         splits[0] = 12;
 
         vm.prank(address(5));
-        escrow.rankedSettle(newBountyId, recipients, splits, new DataTypes.PostWithSigData[](0));
+        escrow.rankedSettle(newBountyId, recipients, splits, new Types.PostParams[](0), new Types.EIP712Signature[](0));
         vm.stopPrank();
     }
 
@@ -70,7 +92,7 @@ contract EscrowTest is Test {
         uint256[] memory splits = new uint256[](2);
         splits[0] = 75_000;
         splits[1] = 25_000;
-        escrow.rankedSettle(newBountyId, recipients, splits, new DataTypes.PostWithSigData[](0));
+        escrow.rankedSettle(newBountyId, recipients, splits, new Types.PostParams[](0), new Types.EIP712Signature[](0));
         escrow.close(newBountyId);
 
         uint256 expected1 = 75_000;
@@ -89,22 +111,12 @@ contract EscrowTest is Test {
         vm.stopPrank();
     }
 
-    function testOpenTheGates() public {
-        address newSender = address(574839);
-        uint256 bountyAmount = 100_000_000;
-        escrow.openTheGates();
-        vm.startPrank(newSender);
-        helperMintApproveTokens(bountyAmount, newSender);
-        escrow.deposit(address(mockToken), bountyAmount);
-        vm.stopPrank();
-    }
-
     function testSettleAndWithdrawFees() public {
         vm.startPrank(defaultSender);
         uint256 fee = 500;
         uint256 bountyAmount = 100_000_000;
-        escrow = new Escrow(address(4545454545), fee);
-        escrow.openTheGates();
+        escrow = new Escrow(address(4545454545), fee, 0);
+        escrow.setMadSBT(address(mockMadSBT), 1, 1);
         helperMintApproveTokens(bountyAmount + ((500 * bountyAmount) / 10_000), defaultSender);
         uint256 beforeBal = mockToken.balanceOf(defaultSender);
 
@@ -117,7 +129,7 @@ contract EscrowTest is Test {
         uint256[] memory splits = new uint256[](2);
         splits[0] = 75_000;
         splits[1] = 25_000;
-        escrow.rankedSettle(newBountyId, recipients, splits, new DataTypes.PostWithSigData[](0));
+        escrow.rankedSettle(newBountyId, recipients, splits, new Types.PostParams[](0), new Types.EIP712Signature[](0));
         escrow.close(newBountyId);
 
         uint256 payout = splits[0] + splits[1];
@@ -151,7 +163,7 @@ contract EscrowTest is Test {
         splits[0] = 75_000;
         splits[1] = 75_000;
 
-        escrow.rankedSettle(newBountyId, recipients, splits, new DataTypes.PostWithSigData[](0));
+        escrow.rankedSettle(newBountyId, recipients, splits, new Types.PostParams[](0), new Types.EIP712Signature[](0));
         vm.stopPrank();
     }
 
@@ -172,7 +184,7 @@ contract EscrowTest is Test {
         uint256[] memory splits = new uint256[](2);
         splits[0] = 75_000;
 
-        escrow.rankedSettle(newBountyId, recipients, splits, new DataTypes.PostWithSigData[](0));
+        escrow.rankedSettle(newBountyId, recipients, splits, new Types.PostParams[](0), new Types.EIP712Signature[](0));
         vm.stopPrank();
     }
 
@@ -180,8 +192,8 @@ contract EscrowTest is Test {
         vm.startPrank(defaultSender);
         uint256 fee = 500;
         uint256 bountyAmount = 100_000_000;
-        escrow = new Escrow(address(4545454545), fee);
-        escrow.openTheGates();
+        escrow = new Escrow(address(4545454545), fee, 0);
+        escrow.setMadSBT(address(mockMadSBT), 1, 1);
         helperMintApproveTokens(bountyAmount + ((500 * bountyAmount) / 10_000), defaultSender);
         helperMintApproveTokens(bountyAmount, address(escrow));
         uint256 beforeBal = mockToken.balanceOf(defaultSender);
@@ -196,7 +208,7 @@ contract EscrowTest is Test {
         splits[0] = 75_000;
         splits[1] = 25_000;
 
-        escrow.rankedSettle(newBountyId, recipients, splits, new DataTypes.PostWithSigData[](0));
+        escrow.rankedSettle(newBountyId, recipients, splits, new Types.PostParams[](0), new Types.EIP712Signature[](0));
         escrow.close(newBountyId);
 
         uint256 payout = splits[0] + splits[1];

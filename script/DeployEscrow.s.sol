@@ -2,9 +2,9 @@
 pragma solidity ^0.8.10;
 
 import "forge-std/Script.sol";
-import "../src/EscrowV3.sol";
+import "../src/Escrow.sol";
 
-contract DeployScript is Script {
+contract DeployEscrow is Script {
     function setUp() public {}
 
     function run() public {
@@ -15,12 +15,14 @@ contract DeployScript is Script {
         address lensHubPolygon = 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d;
         address lensHubMumbai = 0x60Ae865ee4C725cd04353b5AAb364553f56ceF82;
 
+        address lensHub = block.chainid == 137 ? lensHubPolygon : lensHubMumbai;
+
         uint256 protocolFee = 10_00;
 
         // TODO: be sure to set correct last bounty id
         uint256 lastBountyId = 8;
 
-        EscrowV3 e = new EscrowV3(lensHubPolygon, protocolFee, lastBountyId);
+        Escrow e = new Escrow(lensHub, protocolFee, lastBountyId);
 
         // TODO: fill these in
         address _madSBT = address(0);

@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import "forge-std/Script.sol";
 import "../src/Escrow.sol";
 
-contract WithdrawFeesScript is Script {
+contract WithdrawFees is Script {
     function setUp() public {}
 
     function run() public {
