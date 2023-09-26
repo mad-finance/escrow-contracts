@@ -20,6 +20,7 @@ import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/access/Ownable.sol";
 import "madfi-protocol/interfaces/IMadSBT.sol";
 import "./extensions/LensExtension.sol";
+import "./interfaces/IRewardNft.sol";
 
 contract Escrow is Ownable, LensExtension {
     uint256 public protocolFee; // basis points
@@ -32,7 +33,10 @@ contract Escrow is Ownable, LensExtension {
         uint256 amount;
         address sponsor;
         address token;
+        uint256 collectionId;
     }
+
+    IRewardNft public rewardNft;
 
     // MADSBT POINTS
     IMadSBT madSBT;
@@ -49,6 +53,7 @@ contract Escrow is Ownable, LensExtension {
     error NotArbiter(address sender);
     error InvalidBidAmount(uint256 amount);
     error InvalidSplits(uint256 amount);
+    error NFTBounty(uint256 bountyId);
 
     // CONSTRUCTOR
     constructor(address _lensHub, uint256 _protocolFee, uint256 _startId) Ownable() LensExtension(_lensHub) {
@@ -65,10 +70,25 @@ contract Escrow is Ownable, LensExtension {
      */
     function deposit(address token, uint256 amount) external returns (uint256 bountyId) {
         uint256 total = amount + calcFee(amount);
-        Bounty memory newBounty = Bounty(total, _msgSender(), token);
+        Bounty memory newBounty = Bounty(total, _msgSender(), token, 0);
         bounties[++count] = newBounty;
 
         IERC20(token).transferFrom(_msgSender(), address(this), total);
+
+        madSBT.handleRewardsUpdate(_msgSender(), collectionId, profileId, IMadSBT.Action.CREATE_BOUNTY);
+
+        emit BountyCreated(count, newBounty);
+        return count;
+    }
+
+    /**
+     * @notice create a new bounty with an NFT
+     * @param _uri uri to create collection with
+     */
+    function depositNft(string calldata _uri) external returns (uint256 bountyId) {
+        uint256 nftCollectionId = rewardNft.createCollection(_uri);
+        Bounty memory newBounty = Bounty(0, _msgSender(), address(0), nftCollectionId);
+        bounties[++count] = newBounty;
 
         madSBT.handleRewardsUpdate(_msgSender(), collectionId, profileId, IMadSBT.Action.CREATE_BOUNTY);
 
@@ -92,6 +112,33 @@ contract Escrow is Ownable, LensExtension {
         Types.EIP712Signature[] calldata signatures
     ) external {
         _rankedSettle(bountyId, recipients, splits);
+        postWithSigBatch(postParams, signatures);
+    }
+
+    /**
+     * @notice mints nft to recipients and posts to Lens
+     * @param bountyId bounty to settle
+     * @param recipients list of addresses to mint to
+     * @param postParams PostParams to post to Lens on recipients behalf
+     * @param signatures EIP712 signatures for postParams
+     */
+    function nftSettle(
+        uint256 bountyId,
+        address[] calldata recipients,
+        Types.PostParams[] calldata postParams,
+        Types.EIP712Signature[] calldata signatures
+    ) external {
+        Bounty memory bounty = bounties[bountyId];
+        if (bounty.collectionId == 0) {
+            revert NFTBounty(bountyId);
+        }
+        uint256 length = recipients.length;
+        for (uint256 i = 0; i < length;) {
+            rewardNft.mint(recipients[i], bounty.collectionId, 1, "");
+            unchecked {
+                ++i;
+            }
+        }
         postWithSigBatch(postParams, signatures);
     }
 
@@ -165,6 +212,14 @@ contract Escrow is Ownable, LensExtension {
         profileId = _profileId;
     }
 
+    /**
+     * @notice sets the RewardNft contract
+     * @param _rewardNft the address of the RewardNft contract
+     */
+    function setRewardNft(address _rewardNft) external onlyOwner {
+        rewardNft = IRewardNft(_rewardNft);
+    }
+
     // INTERNAL FUNCTIONS
 
     /**
@@ -175,6 +230,9 @@ contract Escrow is Ownable, LensExtension {
      */
     function _rankedSettle(uint256 bountyId, address[] calldata recipients, uint256[] calldata splits) internal {
         Bounty memory bounty = bounties[bountyId];
+        if (bounty.collectionId != 0) {
+            revert NFTBounty(bountyId);
+        }
         if (_msgSender() != bounty.sponsor) {
             revert NotArbiter(_msgSender());
         }

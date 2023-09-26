@@ -6,15 +6,18 @@ import "../src/Escrow.sol";
 import "../src/mocks/MockToken.sol";
 import "../src/mocks/MockMadSBT.sol";
 import "../src/extensions/LensExtension.sol";
+import "../src/RewardNft.sol";
 
 contract EscrowTest is Test {
     Escrow escrow;
+    RewardNft rewardNft;
     MockToken mockToken;
     MockMadSBT mockMadSBT;
     address defaultSender = 0xb4c79daB8f259C7Aee6E5b2Aa729821864227e84;
 
     function setUp() public {
         escrow = new Escrow(address(4545454545), 0, 0);
+        rewardNft = new RewardNft(address(escrow));
 
         mockMadSBT = new MockMadSBT();
         mockToken = new MockToken();
@@ -33,7 +36,7 @@ contract EscrowTest is Test {
         helperMintApproveTokens(bountyAmount, defaultSender);
         uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
         assertTrue(newBountyId == 1);
-        (uint256 amount, address sponsor, address token) = escrow.bounties(newBountyId);
+        (uint256 amount, address sponsor, address token,) = escrow.bounties(newBountyId);
         assertTrue(token == address(mockToken));
         assertTrue(amount == bountyAmount);
         assertTrue(sponsor == defaultSender);
@@ -46,7 +49,7 @@ contract EscrowTest is Test {
         helperMintApproveTokens(bountyAmount, defaultSender);
         uint256 newBountyId = escrow.deposit(address(mockToken), bountyAmount);
         assertTrue(newBountyId == 1);
-        (uint256 amount, address sponsor, address token) = escrow.bounties(newBountyId);
+        (uint256 amount, address sponsor, address token,) = escrow.bounties(newBountyId);
         assertTrue(token == address(mockToken));
         assertTrue(amount == bountyAmount);
         assertTrue(sponsor == defaultSender);
@@ -55,7 +58,7 @@ contract EscrowTest is Test {
         uint256 topUpAmount = 100;
         helperMintApproveTokens(topUpAmount, defaultSender);
         escrow.topUp(newBountyId, topUpAmount);
-        (amount, sponsor, token) = escrow.bounties(newBountyId);
+        (amount, sponsor, token,) = escrow.bounties(newBountyId);
         assertTrue(amount == bountyAmount + topUpAmount);
         vm.stopPrank();
     }
@@ -224,6 +227,30 @@ contract EscrowTest is Test {
         escrow.withdrawFees(tokens);
         assertTrue(mockToken.balanceOf(defaultSender) == ownerBeforeBal + feePaid);
         assertTrue(mockToken.balanceOf(address(escrow)) == bountyAmount);
+        vm.stopPrank();
+    }
+
+    function testNftRewardBounty() public {
+        escrow.setRewardNft(address(rewardNft));
+
+        // create bounty
+        vm.startPrank(defaultSender);
+        uint256 newBountyId = escrow.depositNft("ipfs://123");
+        assertTrue(newBountyId == 1);
+        (uint256 amount, address sponsor, address token, uint256 collectionID) = escrow.bounties(newBountyId);
+        assertTrue(token == address(0));
+        assertTrue(amount == 0);
+        assertTrue(sponsor == defaultSender);
+        assertTrue(collectionID == 1);
+
+        // pay out bounty
+        address[] memory recipients = new address[](2);
+        recipients[0] = address(123);
+        recipients[1] = address(124);
+        escrow.nftSettle(newBountyId, recipients, new Types.PostParams[](0), new Types.EIP712Signature[](0));
+        assertTrue(rewardNft.balanceOf(recipients[0], 1) == 1);
+        assertTrue(rewardNft.balanceOf(recipients[1], 1) == 1);
+
         vm.stopPrank();
     }
 }
