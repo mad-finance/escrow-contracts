@@ -17,21 +17,29 @@ Functions:
 
 - deposit: Specify amount and address of token and time period of bounty. Transfers tokens into escrow contract. Returns a id for the bounty.
 
-- settle: Specifies winners of bounty and distributes funds and posts to Lens
+- depositNft: Specify token uri and create a bounty with an nft as reward instead of cash
 
 - rankedSettle: settles the bounty by splitting between all recipients and posts to Lens. There are different versions for posting, mirroring, commenting, following and collecting.
 
-- refund: Returns escrowed tokens for a bounty to sponsor. Can only be called by contract owner.
+- nftSettle: settle an nft bounty
+
+- topUp: add funds to a bounty
+
+- close: close bounty and return remaining funds
+
+Admin Functions
 
 - setProtocolFee: sets the protocol fee (in basis points). Can only be called by contract owner.
 
 - withdrawFees: withdraws all accumulated fees
 
-- addDepositors: Adds addresses that are allowed to create bounties
+- setMadSbt: sets the MadSBT contract, collection ID and profile ID
 
-- removeDepositors: Removes addresses that are allowed to create bounties
+- setRewardNft: sets the RewardNft contract
 
-- openTheGates: remove allowlist requirement for depositors
+## RewardNft
+
+An erc1155 contract that can be used for free bounties where winners are just minted an nft in a collection for that bounty.
 
 ## PermissionedMintNft
 
@@ -43,17 +51,8 @@ An nft contract with unlimited supply that requires a signature from the contrac
 source .env
 
 # deploy escrow contract
-forge script script/Deploy.s.sol:DeployScript --rpc-url polygon --broadcast --verify -vvvv
-
-# deploy escrow contract v2
-forge script script/DeployV2.s.sol:DeployScript --rpc-url polygon --broadcast --verify -vvvv
+forge script script/DeployEscrow.s.sol:DeployEscrow --rpc-url polygon --broadcast --verify -vvvv
 
 # withdraw fees
-forge script script/WithdrawFees.s.sol:WithdrawFeesScript --rpc-url polygon --broadcast -vvvv
-
-# add despoitor
-forge script script/AddDepositors.s.sol:AddDepositorsScript --rpc-url polygon --broadcast -vvvv
-
-#when verification fails
-forge verify-contract --chain-id 137 --num-of-optimizations 20000 --watch --constructor-args $(cast abi-encode "constructor(address,uint256,uint256)" "0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d" 1000 4) --compiler-version v0.8.10+commit.fc410830 <contract_address> src/EscrowV2.sol:EscrowV2 <etherscan_key>
+forge script script/WithdrawFees.s.sol:WithdrawFees --rpc-url polygon --broadcast -vvvv
 ```

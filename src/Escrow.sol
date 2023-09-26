@@ -149,6 +149,9 @@ contract Escrow is Ownable, LensExtension {
      */
     function topUp(uint256 bountyId, uint256 amount) external {
         Bounty memory bounty = bounties[bountyId];
+        if (bounty.collectionId != 0) {
+            revert NFTBounty(bountyId);
+        }
         uint256 total = amount + calcFee(amount);
         bounties[bountyId].amount += total;
         IERC20(bounty.token).transferFrom(_msgSender(), address(this), total);
@@ -162,11 +165,12 @@ contract Escrow is Ownable, LensExtension {
         if (_msgSender() != bounties[bountyId].sponsor) {
             revert NotArbiter(_msgSender());
         }
-        address sponsor = bounties[bountyId].sponsor;
-        uint256 amount = bounties[bountyId].amount;
-        address token = bounties[bountyId].token;
+
+        Bounty memory bounty = bounties[bountyId];
+        if (bounty.collectionId == 0) {
+            IERC20(bounty.token).transfer(bounty.sponsor, bounty.amount);
+        }
         delete bounties[bountyId];
-        IERC20(token).transfer(sponsor, amount);
 
         emit BountyClosed(bountyId);
     }

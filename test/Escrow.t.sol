@@ -251,6 +251,9 @@ contract EscrowTest is Test {
         assertTrue(rewardNft.balanceOf(recipients[0], 1) == 1);
         assertTrue(rewardNft.balanceOf(recipients[1], 1) == 1);
 
+        // close bounty
+        escrow.close(newBountyId);
+
         vm.stopPrank();
     }
 }
