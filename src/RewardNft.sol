@@ -25,6 +25,8 @@ contract RewardNft is ERC1155, IRewardNft {
 
     mapping(uint256 => string) public tokenURIs;
 
+    event CollectionCreated(uint256 indexed id, string tokenURI);
+
     constructor(address _escrow) ERC1155("") {
         escrow = _escrow;
     }
@@ -32,6 +34,7 @@ contract RewardNft is ERC1155, IRewardNft {
     function createCollection(string calldata _tokenUri) external override onlyEscrow returns (uint256) {
         collectionsCount++; // start at 1
         tokenURIs[collectionsCount] = _tokenUri;
+        emit CollectionCreated(collectionsCount, _tokenUri);
         return collectionsCount;
     }
 

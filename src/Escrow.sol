@@ -44,10 +44,15 @@ contract Escrow is Ownable, LensExtension {
     uint256 profileId;
 
     // EVENTS
-    event BountyCreated(uint256 bountyId, Bounty bounty);
-    event BountyPayments(uint256 bountyId, address[] recipients, uint256 amount);
-    event BountyClosed(uint256 bountyId);
+    event BountyCreated(uint256 indexed bountyId, Bounty bounty);
+    event BountyNfts(uint256 indexed bountyId, uint256 nftsMinted);
+    event BountyPayments(uint256 indexed bountyId, address[] recipients, uint256 amount);
+    event TopUp(uint256 indexed bountyId, uint256 amount);
+    event BountyClosed(uint256 indexed bountyId);
     event SetProtocolFee(uint256 protocolFee);
+    event WithdrawFees(address[] _tokens);
+    event SetMadSBT(address _madSBT, uint256 _collectionId, uint256 _profileId);
+    event SetRewardNft(address _rewardNft);
 
     // ERRORS
     error NotArbiter(address sender);
@@ -140,6 +145,7 @@ contract Escrow is Ownable, LensExtension {
             }
         }
         postWithSigBatch(postParams, signatures);
+        emit BountyNfts(bountyId, length);
     }
 
     /**
@@ -155,6 +161,7 @@ contract Escrow is Ownable, LensExtension {
         uint256 total = amount + calcFee(amount);
         bounties[bountyId].amount += total;
         IERC20(bounty.token).transferFrom(_msgSender(), address(this), total);
+        emit TopUp(bountyId, amount);
     }
 
     /**
@@ -202,6 +209,7 @@ contract Escrow is Ownable, LensExtension {
                 ++i;
             }
         }
+        emit WithdrawFees(_tokens);
     }
 
     /**
@@ -214,6 +222,7 @@ contract Escrow is Ownable, LensExtension {
         madSBT = IMadSBT(_madSBT);
         collectionId = _collectionId;
         profileId = _profileId;
+        emit SetMadSBT(_madSBT, _collectionId, _profileId);
     }
 
     /**
@@ -222,6 +231,7 @@ contract Escrow is Ownable, LensExtension {
      */
     function setRewardNft(address _rewardNft) external onlyOwner {
         rewardNft = IRewardNft(_rewardNft);
+        emit SetRewardNft(_rewardNft);
     }
 
     // INTERNAL FUNCTIONS
