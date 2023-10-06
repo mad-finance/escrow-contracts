@@ -14,10 +14,10 @@ __/\\\______________/\\\\\\\\\\\\\\\__/\\\\\_____/\\\_____/\\\\\\\\\\\__________
 
 pragma solidity ^0.8.10;
 
-import "lens/interfaces/ILensProtocol.sol";
+import "lens/interfaces/ILensHub.sol";
 
 contract LensExtension {
-    ILensProtocol internal lensHub;
+    ILensHub internal lensHub;
 
     // follow data isn't organized as a struct on the lens hub so I'm doing it here
     struct FollowWithSigData {
