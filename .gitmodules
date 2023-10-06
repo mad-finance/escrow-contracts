@@ -10,6 +10,7 @@
 [submodule "lib/core"]
 	path = lib/core
 	url = https://github.com/lens-protocol/core
+	branch = v2
 [submodule "lib/madfi-protocol-public"]
 	path = lib/madfi-protocol-public
 	url = https://github.com/mad-finance/madfi-protocol-public
