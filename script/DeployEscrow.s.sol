@@ -2,9 +2,9 @@
 pragma solidity ^0.8.10;
 
 import "forge-std/Script.sol";
-import "../src/Escrow.sol";
+import "../src/Bounties.sol";
 
-contract DeployEscrow is Script {
+contract DeployBounties is Script {
     function setUp() public {}
 
     function run() public {
@@ -22,7 +22,7 @@ contract DeployEscrow is Script {
         // TODO: be sure to set correct last bounty id
         uint256 lastBountyId = 8;
 
-        Escrow e = new Escrow(lensHub, protocolFee, lastBountyId);
+        Bounties e = new Bounties(lensHub, protocolFee, lastBountyId);
 
         // TODO: fill these in
         address _madSBT = address(0);

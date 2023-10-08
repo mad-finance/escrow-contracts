@@ -21,8 +21,9 @@ import "openzeppelin/access/Ownable.sol";
 import "madfi-protocol/interfaces/IMadSBT.sol";
 import "./extensions/LensExtension.sol";
 import "./interfaces/IRewardNft.sol";
+import "./interfaces/IRevShare.sol";
 
-contract Escrow is Ownable, LensExtension {
+contract Bounties is Ownable, LensExtension {
     uint256 public protocolFee; // basis points
     mapping(address => uint256) public feesEarned;
 
@@ -37,6 +38,8 @@ contract Escrow is Ownable, LensExtension {
     }
 
     IRewardNft public rewardNft;
+
+    IRevShare public revShare;
 
     // MADSBT POINTS
     IMadSBT madSBT;
@@ -53,6 +56,7 @@ contract Escrow is Ownable, LensExtension {
     event WithdrawFees(address[] _tokens);
     event SetMadSBT(address _madSBT, uint256 _collectionId, uint256 _profileId);
     event SetRewardNft(address _rewardNft);
+    event SetRevShare(address _revShare);
 
     // ERRORS
     error NotArbiter(address sender);
@@ -80,7 +84,7 @@ contract Escrow is Ownable, LensExtension {
 
         IERC20(token).transferFrom(_msgSender(), address(this), total);
 
-        madSBT.handleRewardsUpdate(_msgSender(), collectionId, profileId, IMadSBT.Action.CREATE_BOUNTY);
+        madSBT.handleRewardsUpdate(_msgSender(), collectionId, 3);
 
         emit BountyCreated(count, newBounty);
         return count;
@@ -95,7 +99,7 @@ contract Escrow is Ownable, LensExtension {
         Bounty memory newBounty = Bounty(0, _msgSender(), address(0), nftCollectionId);
         bounties[++count] = newBounty;
 
-        madSBT.handleRewardsUpdate(_msgSender(), collectionId, profileId, IMadSBT.Action.CREATE_BOUNTY);
+        madSBT.handleRewardsUpdate(_msgSender(), collectionId, 3);
 
         emit BountyCreated(count, newBounty);
         return count;
@@ -234,6 +238,15 @@ contract Escrow is Ownable, LensExtension {
         emit SetRewardNft(_rewardNft);
     }
 
+    /**
+     * @notice sets the RevShare contract
+     * @param _revShare the address of the RevShare contract
+     */
+    function setRevShare(address _revShare) external onlyOwner {
+        revShare = IRevShare(_revShare);
+        emit SetRevShare(_revShare);
+    }
+
     // INTERNAL FUNCTIONS
 
     /**
@@ -271,9 +284,8 @@ contract Escrow is Ownable, LensExtension {
 
         IERC20 token = IERC20(bounty.token);
         for (uint256 i = 0; i < length;) {
-            token.transfer(recipients[i], splits[i]);
-
-            madSBT.handleRewardsUpdate(recipients[i], collectionId, profileId, IMadSBT.Action.ACCEPTED_BID);
+            _bidPayment(recipients[i], token, splits[i]);
+            madSBT.handleRewardsUpdate(recipients[i], collectionId, 4);
 
             unchecked {
                 ++i;
@@ -281,6 +293,26 @@ contract Escrow is Ownable, LensExtension {
         }
 
         emit BountyPayments(bountyId, recipients, splitTotal);
+    }
+
+    /**
+     * @dev disburses funds to a recipient, if they have a rev share setup it will be paid out
+     * @param recipient address to disperse to
+     * @param token token to disperse
+     * @param amount amount of token to disperse
+     */
+    function _bidPayment(address recipient, IERC20 token, uint256 amount) internal {
+        uint256 revShareSplitAmount;
+        if (address(revShare) != address(0)) {
+            (uint256 collectionId_, uint256 split) = revShare.getCreatorData(recipient);
+            if (collectionId_ != 0) {
+                unchecked {
+                    revShareSplitAmount = split * amount / 10_000;
+                }
+                revShare.deposit(collectionId_, revShareSplitAmount, address(token));
+            }
+        }
+        token.transfer(recipient, amount - revShareSplitAmount);
     }
 
     /// @notice fallback function to prevent accidental ether transfers

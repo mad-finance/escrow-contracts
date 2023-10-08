@@ -17,40 +17,91 @@ __/\\\\____________/\\\\_____/\\\\\\\\\_____/\\\\\\\\\\\\_____/\\\\\\\\\\\\\\\__
 pragma solidity ^0.8.10;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
+import "madfi-protocol/interfaces/IMadSBT.sol";
+import "./interfaces/IRevShare.sol";
 
-contract RevShare {
-    // badgeId -> token -> amount
-    mapping(uint256 => mapping(address => uint256)) public creatorPools;
+contract RevShare is IRevShare {
+    IMadSBT madSBT;
 
-    // badgeId -> split percent in bps (10000 = 100%)
-    mapping(uint256 => uint256) public splitAmounts;
+    // collectionId -> token -> amount
+    mapping(uint256 => mapping(address => uint256)) creatorPools;
 
-    event Deposited(uint256 indexed badgeId, address indexed token, uint256 amount);
-    event Claimed(address indexed recipient, uint256 indexed badgeId, address indexed token, uint256 amount);
+    // address => { collectionId, splitAmount }
+    mapping(address => CreatorData) creatorData;
 
-    constructor() {}
-
-    function deposit(uint256 _badgeId, uint256 _amount, address _token) public {
-        IERC20(_token).transferFrom(msg.sender, address(this), _amount);
-        creatorPools[_badgeId][_token] += _amount;
-        emit Deposited(_badgeId, _token, _amount);
+    /// CONSTRUCTOR
+    constructor(address _madSbt) {
+        madSBT = IMadSBT(_madSbt);
     }
 
-    /// to call from Bounty contract or custom collect 
-    function depositWithSplit(uint256 _badgeId, uint256 _amount, address _token) external {
-        deposit(_badgeId, splitAmounts[_badgeId] * _amount / 10000, _token);
+    /// MUTATIVE FUNCTIONS
+
+    /**
+     * @notice Allows a user to deposit a specified amount of a specific token into a creator's pool
+     * @param collectionId The ID of the collection to which the creator's pool belongs
+     * @param amount The amount of the token to deposit
+     * @param token The address of the token to deposit
+     */
+    function deposit(uint256 collectionId, uint256 amount, address token) public override {
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        creatorPools[collectionId][token] += amount;
+        emit Deposited(collectionId, token, amount);
     }
 
-    function claim(uint256 _badgeId, address _token) external {
-        uint256 amount;
-        // TODO: calculate your share and claim
-
-        emit Claimed(msg.sender, _badgeId, _token, amount);
+    /**
+     * @notice Allows a user to claim a specified amount of a specific token from a creator's pool
+     * @param collectionId The ID of the collection to which the creator's pool belongs
+     * @param token The address of the token to claim
+     */
+    function claim(uint256 collectionId, address token) external {
+        uint256 amount; // TODO: calculate amount as msg.sender's xp / total xp * pool amount
+        IERC20(token).transferFrom(address(this), msg.sender, amount);
+        emit Claimed(msg.sender, collectionId, token, amount);
     }
 
-    function setSplitAmount(uint256 _badgeId, uint256 _splitAmount) external {
-        // TODO: only badge owner
-        require(_splitAmount <= 10000, "Split amount must be <= 10000");
-        splitAmounts[_badgeId] = _splitAmount;
+    /**
+     * @notice Allows a badge creator to set the data for their creator pool
+     * @param collectionId The ID of the collection to which the creator's pool belongs
+     * @param splitAmount The amount of the token to split among the creator's pool
+     */
+    function setCreatorData(uint256 collectionId, uint256 splitAmount) external onlyBadgeCreator(collectionId) {
+        require(splitAmount <= 10_000, "Split amount must be <= 10,000");
+        CreatorData memory data = CreatorData(collectionId, splitAmount);
+        creatorData[msg.sender] = data;
+        emit SetCreatorData(msg.sender, data);
+    }
+
+    /// VIEWS
+
+    /**
+     * @notice Returns the data for a specific creator
+     * @param creator The address of the creator
+     * @return The ID of the collection to which the creator's pool belongs and the amount of the token to split among the creator's pool
+     */
+    function getCreatorData(address creator) external view override returns (uint256, uint256) {
+        CreatorData storage data = creatorData[creator];
+        return (data.collectionId, data.splitAmount);
+    }
+
+    /**
+     * @notice Returns the amount of a specific token in a creator's pool
+     * @param collectionId The ID of the collection to which the creator's pool belongs
+     * @param token The address of the token
+     * @return The amount of the token in the creator's pool
+     */
+    function getPoolAmount(uint256 collectionId, address token) external view override returns (uint256) {
+        return creatorPools[collectionId][token];
+    }
+
+    /// MODIFIERS
+
+    /**
+     * @notice Ensures that only the creator of a badge can call a function
+     * @param collectionId The ID of the collection to which the badge belongs
+     */
+    modifier onlyBadgeCreator(uint256 collectionId) {
+        (,,,,, address creator,) = madSBT.collectionData(collectionId);
+        require(msg.sender == creator, "Only badge creator can call this function");
+        _;
     }
 }

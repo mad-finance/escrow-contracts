@@ -20,25 +20,25 @@ import "openzeppelin/token/ERC1155/ERC1155.sol";
 import "./interfaces/IRewardNft.sol";
 
 contract RewardNft is ERC1155, IRewardNft {
-    address escrow;
+    address bounties;
     uint256 collectionsCount;
 
     mapping(uint256 => string) public tokenURIs;
 
     event CollectionCreated(uint256 indexed id, string tokenURI);
 
-    constructor(address _escrow) ERC1155("") {
-        escrow = _escrow;
+    constructor(address _bounties) ERC1155("") {
+        bounties = _bounties;
     }
 
-    function createCollection(string calldata _tokenUri) external override onlyEscrow returns (uint256) {
+    function createCollection(string calldata _tokenUri) external override onlyBounties returns (uint256) {
         collectionsCount++; // start at 1
         tokenURIs[collectionsCount] = _tokenUri;
         emit CollectionCreated(collectionsCount, _tokenUri);
         return collectionsCount;
     }
 
-    function mint(address account, uint256 id, uint256 amount, bytes memory data) external override onlyEscrow {
+    function mint(address account, uint256 id, uint256 amount, bytes memory data) external override onlyBounties {
         require(id <= collectionsCount, "Nonexistant collection");
         _mint(account, id, amount, data);
     }
@@ -47,8 +47,8 @@ contract RewardNft is ERC1155, IRewardNft {
         return tokenURIs[_id];
     }
 
-    modifier onlyEscrow() {
-        require(msg.sender == escrow, "Only escrow");
+    modifier onlyBounties() {
+        require(msg.sender == bounties, "Only bounties");
         _;
     }
 }
