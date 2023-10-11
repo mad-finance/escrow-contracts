@@ -249,8 +249,6 @@ contract BountiesTest is Test {
     }
 
     function testNftRewardBounty() public {
-        bounties.setRewardNft(address(rewardNft));
-
         // create bounty
         vm.startPrank(defaultSender);
         uint256 newBountyId = bounties.depositNft("ipfs://123");

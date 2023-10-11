@@ -44,6 +44,7 @@ contract RevShare is IRevShare {
      */
     function deposit(uint256 collectionId, uint256 amount, address token) public override {
         IERC20(token).transferFrom(msg.sender, address(this), amount);
+        // TODO: wrap as super token
         creatorPools[collectionId][token] += amount;
         emit Deposited(collectionId, token, amount);
     }
@@ -53,10 +54,12 @@ contract RevShare is IRevShare {
      * @param collectionId The ID of the collection to which the creator's pool belongs
      * @param token The address of the token to claim
      */
-    function claim(uint256 collectionId, address token) external {
-        uint256 amount; // TODO: calculate amount as msg.sender's xp / total xp * pool amount
-        IERC20(token).transferFrom(address(this), msg.sender, amount);
-        emit Claimed(msg.sender, collectionId, token, amount);
+    function distributeRevShare(uint256 collectionId, address token) external {
+        uint amount  = creatorPools[collectionId][token];
+        // TODO: distribute rev share to badge hodlers
+        // address superTokenAddress;
+        // madSBT.distributeRevShare(collectionId, amount, superTokenAddress);
+        emit Distributed(collectionId, token, amount);
     }
 
     /**
