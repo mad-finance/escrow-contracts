@@ -18,12 +18,15 @@ pragma solidity ^0.8.10;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/access/Ownable.sol";
+import "openzeppelin/utils/cryptography/ECDSA.sol";
 import "madfi-protocol/interfaces/IMadSBT.sol";
 import "./extensions/LensExtension.sol";
 import "./interfaces/IRewardNft.sol";
-import "./interfaces/IRevShare.sol";
+import "./libraries/RevShare.sol";
 
 contract Bounties is Ownable, LensExtension {
+    using ECDSA for bytes32;
+
     uint256 public protocolFee; // basis points
     mapping(address => uint256) public feesEarned;
 
@@ -37,9 +40,19 @@ contract Bounties is Ownable, LensExtension {
         uint256 collectionId;
     }
 
+    struct RankedSettleInput {
+        uint256 bountyId;
+        address[] recipients;
+        uint256[] splits;
+        uint256[] revShares;
+        bytes[] paymentSignatures;
+        Types.PostParams[] postParams;
+        Types.EIP712Signature[] signatures;
+    }
+
     IRewardNft public rewardNft;
 
-    IRevShare public revShare;
+    address swapRouter;
 
     // MADSBT POINTS
     IMadSBT madSBT;
@@ -63,11 +76,16 @@ contract Bounties is Ownable, LensExtension {
     error InvalidBidAmount(uint256 amount);
     error InvalidSplits(uint256 amount);
     error NFTBounty(uint256 bountyId);
+    error InvalidSignature(address bidder);
 
     // CONSTRUCTOR
-    constructor(address _lensHub, uint256 _protocolFee, uint256 _startId) Ownable() LensExtension(_lensHub) {
+    constructor(address _lensHub, uint256 _protocolFee, uint256 _startId, address _swapRouter)
+        Ownable()
+        LensExtension(_lensHub)
+    {
         protocolFee = _protocolFee;
         count = _startId;
+        swapRouter = _swapRouter;
     }
 
     // PUBLIC FUNCTIONS
@@ -107,21 +125,12 @@ contract Bounties is Ownable, LensExtension {
 
     /**
      * @notice disperse funds to recipients and posts to Lens
-     * @param bountyId bounty to settle
-     * @param recipients list of addresses to disperse to
-     * @param splits list of split amounts to go to each recipient
-     * @param postParams PostParams to post to Lens on recipients behalf
-     * @param signatures EIP712 signatures for postParams
+     * @param input RankedSettleInput struct containing all inputs
      */
-    function rankedSettle(
-        uint256 bountyId,
-        address[] calldata recipients,
-        uint256[] calldata splits,
-        Types.PostParams[] calldata postParams,
-        Types.EIP712Signature[] calldata signatures
-    ) external {
-        _rankedSettle(bountyId, recipients, splits);
-        postWithSigBatch(postParams, signatures);
+    function rankedSettle(RankedSettleInput calldata input) external {
+        _verifySignatures(input.bountyId, input.recipients, input.splits, input.revShares, input.paymentSignatures);
+        _rankedSettle(input.bountyId, input.recipients, input.splits, input.revShares);
+        postWithSigBatch(input.postParams, input.signatures);
     }
 
     /**
@@ -238,16 +247,36 @@ contract Bounties is Ownable, LensExtension {
         emit SetRewardNft(_rewardNft);
     }
 
-    /**
-     * @notice sets the RevShare contract
-     * @param _revShare the address of the RevShare contract
-     */
-    function setRevShare(address _revShare) external onlyOwner {
-        revShare = IRevShare(_revShare);
-        emit SetRevShare(_revShare);
-    }
-
     // INTERNAL FUNCTIONS
+
+    /**
+     * @notice This is an internal function that verifies the signatures of the recipients
+     * @param bountyId The ID of the bounty
+     * @param recipients The list of recipient addresses
+     * @param splits The list of split amounts for each recipient
+     * @param revShares The list of revenue shares for each recipient
+     * @param paymentSignatures The list of payment signatures for each recipient
+     */
+    function _verifySignatures(
+        uint256 bountyId,
+        address[] calldata recipients,
+        uint256[] calldata splits,
+        uint256[] calldata revShares,
+        bytes[] calldata paymentSignatures
+    ) internal pure {
+        uint256 length = recipients.length;
+        for (uint256 i = 0; i < length;) {
+            bytes32 bidHash =
+                keccak256(abi.encode(bountyId, recipients[i], splits[i], revShares[i])).toEthSignedMessageHash();
+
+            if (recipients[i] != bidHash.recover(paymentSignatures[i])) {
+                revert InvalidSignature(recipients[i]);
+            }
+            unchecked {
+                ++i;
+            }
+        }
+    }
 
     /**
      * @dev disperse funds to recipeints
@@ -255,7 +284,12 @@ contract Bounties is Ownable, LensExtension {
      * @param recipients list of addresses to disperse to
      * @param splits list of split amounts to go to each recipient
      */
-    function _rankedSettle(uint256 bountyId, address[] calldata recipients, uint256[] calldata splits) internal {
+    function _rankedSettle(
+        uint256 bountyId,
+        address[] calldata recipients,
+        uint256[] calldata splits,
+        uint256[] calldata revShares
+    ) internal {
         Bounty memory bounty = bounties[bountyId];
         if (bounty.collectionId != 0) {
             revert NFTBounty(bountyId);
@@ -284,7 +318,7 @@ contract Bounties is Ownable, LensExtension {
 
         IERC20 token = IERC20(bounty.token);
         for (uint256 i = 0; i < length;) {
-            _bidPayment(recipients[i], token, splits[i]);
+            _bidPayment(recipients[i], token, splits[i], revShares[i]);
             madSBT.handleRewardsUpdate(recipients[i], collectionId, 4);
 
             unchecked {
@@ -301,18 +335,19 @@ contract Bounties is Ownable, LensExtension {
      * @param token token to disperse
      * @param amount amount of token to disperse
      */
-    function _bidPayment(address recipient, IERC20 token, uint256 amount) internal {
-        uint256 revShareSplitAmount;
-        if (address(revShare) != address(0)) {
-            (uint256 collectionId_, uint256 split) = revShare.getCreatorData(recipient);
-            if (collectionId_ != 0) {
+    function _bidPayment(address recipient, IERC20 token, uint256 amount, uint256 revShareSplit) internal {
+        uint256 revShareAmount;
+        if (revShareSplit > 0) {
+            uint256 _collectionId = madSBT.activeCollection(recipient);
+            if (_collectionId != 0) {
+                // if user has a collection
                 unchecked {
-                    revShareSplitAmount = split * amount / 10_000;
+                    revShareAmount = revShareSplit * amount / 100_00;
                 }
-                revShare.deposit(collectionId_, revShareSplitAmount, address(token));
+                RevShare.distribute(madSBT, revShareAmount, _collectionId, address(token), swapRouter);
             }
         }
-        token.transfer(recipient, amount - revShareSplitAmount);
+        token.transfer(recipient, amount - revShareAmount);
     }
 
     /// @notice fallback function to prevent accidental ether transfers

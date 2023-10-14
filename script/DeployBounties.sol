@@ -22,7 +22,9 @@ contract DeployBounties is Script {
         // TODO: be sure to set correct last bounty id
         uint256 lastBountyId = 8;
 
-        Bounties e = new Bounties(lensHub, protocolFee, lastBountyId);
+        address swapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+
+        Bounties e = new Bounties(lensHub, protocolFee, lastBountyId, swapRouter);
 
         // TODO: fill these in
         address _madSBT = address(0);
