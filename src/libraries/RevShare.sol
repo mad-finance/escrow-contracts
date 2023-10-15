@@ -29,10 +29,16 @@ library RevShare {
      * @param collectionId The collection to distribute rewards to
      * @param token The token to distribute
      * @param swapRouter The swap router to use
+     * @param fee The fee for the pool to swap through
      */
-    function distribute(IMadSBT madSBT, uint256 revShareAmount, uint256 collectionId, address token, address swapRouter)
-        public
-    {
+    function distribute(
+        IMadSBT madSBT,
+        uint256 revShareAmount,
+        uint256 collectionId,
+        address token,
+        address swapRouter,
+        uint24 fee
+    ) public {
         address rewardsToken = madSBT.rewardsToken();
         address underlying = ISuperToken(rewardsToken).getUnderlyingToken();
 
@@ -46,7 +52,7 @@ library RevShare {
             ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
                 tokenIn: token,
                 tokenOut: underlying,
-                fee: 1000,
+                fee: fee, // 500, 3000, 10000
                 recipient: address(this),
                 deadline: block.timestamp + 15,
                 amountIn: revShareAmount,
@@ -55,10 +61,12 @@ library RevShare {
             });
 
             uniswapV3Router.exactInputSingle(params);
+
+            revShareAmount = IERC20(underlying).balanceOf(address(this));
         }
 
         // wrap as super usdc
-        IERC20(token).approve(rewardsToken, revShareAmount);
+        IERC20(underlying).approve(rewardsToken, revShareAmount);
         ISuperToken(rewardsToken).upgrade(revShareAmount);
 
         // instant distribution

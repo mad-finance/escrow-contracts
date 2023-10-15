@@ -9,9 +9,9 @@ Smart contracts for escrowing funds for bounties and issuing funds/rewards.
 3. `forge build` to compile contracts
 4. `forge test` to run tests
 
-## Escrow
+## Bounties
 
-Escrows funds for bounties.
+Manages Bounties.
 
 Functions:
 
@@ -56,3 +56,29 @@ forge script script/DeployEscrow.s.sol:DeployEscrow --rpc-url polygon --broadcas
 # withdraw fees
 forge script script/WithdrawFees.s.sol:WithdrawFees --rpc-url polygon --broadcast -vvvv
 ```
+
+## Bounties in depth
+
+`rankedSettle` is the default way to pay out from a bounty.
+
+```
+    struct RankedSettleInput {
+        uint256 bountyId;
+        address[] recipients;
+        uint256[] bids;
+        uint256[] revShares;
+        bytes[] paymentSignatures;
+        Types.PostParams[] postParams;
+        Types.EIP712Signature[] signatures;
+        uint24 fee;
+    }
+```
+
+- bountyId: the id of the bounty
+- recipients: the addresses of the recipients
+- bids: the amount of the bounty token to be paid to each recipient
+- revShares: the percent of the recipient's split to be distributed through their MaadSBT badge. If they don't have this param will do nothing
+- paymentSignatures: signatures from the recipients to prove that the correct bid amounts and rev share splits are being included
+- postParams: the params for the post to be made to Lens
+- signatures: signatures from the recipients to verify the lens posts are correct
+- fee: if they include a rev share and the bounty token is not the same as the underlying asset for their mad sbt badge reward super token it will need to be swapped. this fee is the fee for the uniswap pool to swap through. It will be 500, 3000 or 10000 (0.05%, .3% or 1%)

@@ -23,7 +23,7 @@ contract MockMadSBT {
         }
     }
 
-    function activeCollection(address account) external view returns (uint256) {
+    function activeCollection(address) external pure returns (uint256) {
         return 1;
     }
 
