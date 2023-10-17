@@ -48,6 +48,8 @@ contract BountiesTest is Test {
     address public bidderAddress = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
     address public bidderAddress2 = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
 
+    uint bidderProfileId = 236;
+
     uint256 bidAmount1 = 75_000;
     uint256 bidAmount2 = 25_000;
 
@@ -562,7 +564,7 @@ contract BountiesTest is Test {
             bool[] memory approvals = new bool[](1);
             approvals[0] = true;
 
-            IHubTest(lensHub).changeDelegatedExecutorsConfig(40, executors, approvals);
+            IHubTest(lensHub).changeDelegatedExecutorsConfig(bidderProfileId, executors, approvals);
         }
 
         vm.startPrank(defaultSender);
@@ -593,12 +595,12 @@ contract BountiesTest is Test {
 
             Types.PostParams[] memory posts = new Types.PostParams[](1);
             posts[0] = Types.PostParams({
-                profileId: 40,
+                profileId: bidderProfileId,
                 contentURI: "ipfs://123",
                 actionModules: new address[](0),
                 actionModulesInitDatas: new bytes[](0),
                 referenceModule: address(0),
-                referenceModuleInitData: bytes("")
+                referenceModuleInitData: new bytes(0)
             });
 
             Types.EIP712Signature[] memory postSignatures = new Types.EIP712Signature[](1);
