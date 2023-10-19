@@ -2,16 +2,16 @@
 
 /*
 
-__/\\\\____________/\\\\_____/\\\\\\\\\_____/\\\\\\\\\\\\_____/\\\\\\\\\\\\\\\__/\\\\\\\\\\\_        
- _\/\\\\\\________/\\\\\\___/\\\\\\\\\\\\\__\/\\\////////\\\__\/\\\///////////__\/////\\\///__       
-  _\/\\\//\\\____/\\\//\\\__/\\\/////////\\\_\/\\\______\//\\\_\/\\\_________________\/\\\_____      
-   _\/\\\\///\\\/\\\/_\/\\\_\/\\\_______\/\\\_\/\\\_______\/\\\_\/\\\\\\\\\\\_________\/\\\_____     
-    _\/\\\__\///\\\/___\/\\\_\/\\\\\\\\\\\\\\\_\/\\\_______\/\\\_\/\\\///////__________\/\\\_____    
-     _\/\\\____\///_____\/\\\_\/\\\/////////\\\_\/\\\_______\/\\\_\/\\\_________________\/\\\_____   
-      _\/\\\_____________\/\\\_\/\\\_______\/\\\_\/\\\_______/\\\__\/\\\_________________\/\\\_____  
-       _\/\\\_____________\/\\\_\/\\\_______\/\\\_\/\\\\\\\\\\\\/___\/\\\______________/\\\\\\\\\\\_ 
+__/\\\\____________/\\\\_____/\\\\\\\\\_____/\\\\\\\\\\\\_____/\\\\\\\\\\\\\\\__/\\\\\\\\\\\_
+ _\/\\\\\\________/\\\\\\___/\\\\\\\\\\\\\__\/\\\////////\\\__\/\\\///////////__\/////\\\///__
+  _\/\\\//\\\____/\\\//\\\__/\\\/////////\\\_\/\\\______\//\\\_\/\\\_________________\/\\\_____
+   _\/\\\\///\\\/\\\/_\/\\\_\/\\\_______\/\\\_\/\\\_______\/\\\_\/\\\\\\\\\\\_________\/\\\_____
+    _\/\\\__\///\\\/___\/\\\_\/\\\\\\\\\\\\\\\_\/\\\_______\/\\\_\/\\\///////__________\/\\\_____
+     _\/\\\____\///_____\/\\\_\/\\\/////////\\\_\/\\\_______\/\\\_\/\\\_________________\/\\\_____
+      _\/\\\_____________\/\\\_\/\\\_______\/\\\_\/\\\_______/\\\__\/\\\_________________\/\\\_____
+       _\/\\\_____________\/\\\_\/\\\_______\/\\\_\/\\\\\\\\\\\\/___\/\\\______________/\\\\\\\\\\\_
         _\///______________\///__\///________\///__\////////////_____\///______________\///////////__
-                                        
+
 */
 
 pragma solidity ^0.8.10;
@@ -42,16 +42,31 @@ contract Bounties is Ownable, LensExtension {
 
     struct RankedSettleInput {
         uint256 bountyId;
-        address[] recipients;
-        uint256[] bids;
-        uint256[] revShares;
+        BidFromAction[] data;
         bytes[] paymentSignatures;
         Types.PostParams[] postParams;
         Types.EIP712Signature[] signatures;
         uint24 fee;
     }
 
+    struct BidFromAction {
+        address recipient;
+        uint256 bid;
+        uint256 revShare;
+    }
+
+    struct RankedSettleFromActionInput {
+        uint256 bountyId;
+        uint256 bidTotal;
+        BidFromAction[] data;
+        Types.PostParams[] postParams;
+        uint24 fee;
+    }
+
+    uint8 public immutable BOUNTY_CREATE_REWARD_ENUM = 3; // to give XP on madfi badge
+    uint8 public immutable BID_ACCEPT_REWARD_ENUM = 4;
     IRewardNft public rewardNft;
+    address public publicationAction;
 
     address swapRouter;
 
@@ -63,7 +78,7 @@ contract Bounties is Ownable, LensExtension {
     // EVENTS
     event BountyCreated(uint256 indexed bountyId, Bounty bounty);
     event BountyNfts(uint256 indexed bountyId, uint256 nftsMinted);
-    event BountyPayments(uint256 indexed bountyId, address[] recipients, uint256 amount);
+    event BountyPayments(uint256 indexed bountyId, uint256 amount);
     event TopUp(uint256 indexed bountyId, uint256 amount);
     event BountyClosed(uint256 indexed bountyId);
     event SetProtocolFee(uint256 protocolFee);
@@ -71,6 +86,7 @@ contract Bounties is Ownable, LensExtension {
     event SetMadSBT(address _madSBT, uint256 _collectionId, uint256 _profileId);
     event SetRewardNft(address _rewardNft);
     event SetRevShare(address _revShare);
+    event SetPublicationAction(address _publicationAction);
 
     // ERRORS
     error NotArbiter(address sender);
@@ -78,6 +94,12 @@ contract Bounties is Ownable, LensExtension {
     error InvalidBids(uint256 amount);
     error NFTBounty(uint256 bountyId);
     error InvalidSignature(address bidder);
+    error OnlyPublicationAction();
+
+    modifier onlyPublicationAction() {
+        if (_msgSender() != publicationAction) revert OnlyPublicationAction();
+        _;
+    }
 
     // CONSTRUCTOR
     constructor(address _lensHub, uint256 _protocolFee, uint256 _startId, address _swapRouter)
@@ -103,7 +125,29 @@ contract Bounties is Ownable, LensExtension {
 
         IERC20(token).transferFrom(_msgSender(), address(this), total);
 
-        madSBT.handleRewardsUpdate(_msgSender(), collectionId, 3);
+        madSBT.handleRewardsUpdate(_msgSender(), collectionId, BOUNTY_CREATE_REWARD_ENUM);
+
+        emit BountyCreated(count, newBounty);
+        return count;
+    }
+
+    /**
+     * @notice Called from the Lens PublicationBountyAction module, on init
+     * @param account the Lens profile owner creating the bounty
+     * @param token token to deposit
+     * @param totalAmount amount of tokens to deposit, including the fee
+     */
+    function depositFromAction(address account, address token, uint256 totalAmount)
+        external
+        onlyPublicationAction
+        returns (uint256 bountyId)
+    {
+        Bounty memory newBounty = Bounty(totalAmount, account, token, 0);
+        bounties[++count] = newBounty;
+
+        IERC20(token).transferFrom(_msgSender(), address(this), totalAmount);
+
+        madSBT.handleRewardsUpdate(account, collectionId, BOUNTY_CREATE_REWARD_ENUM);
 
         emit BountyCreated(count, newBounty);
         return count;
@@ -118,7 +162,7 @@ contract Bounties is Ownable, LensExtension {
         Bounty memory newBounty = Bounty(0, _msgSender(), address(0), nftCollectionId);
         bounties[++count] = newBounty;
 
-        madSBT.handleRewardsUpdate(_msgSender(), collectionId, 3);
+        madSBT.handleRewardsUpdate(_msgSender(), collectionId, BOUNTY_CREATE_REWARD_ENUM);
 
         emit BountyCreated(count, newBounty);
         return count;
@@ -129,9 +173,18 @@ contract Bounties is Ownable, LensExtension {
      * @param input RankedSettleInput struct containing all inputs
      */
     function rankedSettle(RankedSettleInput calldata input) external {
-        _verifySignatures(input.bountyId, input.recipients, input.bids, input.revShares, input.paymentSignatures);
-        _rankedSettle(input.bountyId, input.recipients, input.bids, input.revShares, input.fee);
+        _verifySignatures(input.bountyId, input.data, input.paymentSignatures);
+        _rankedSettle(input.bountyId, input.data, input.fee);
         postWithSigBatch(input.postParams, input.signatures);
+    }
+
+    /**
+     * @notice disperse funds to recipients and posts to Lens
+     * @param input RankedSettleInput struct containing all inputs
+     */
+    function rankedSettleFromAction(RankedSettleFromActionInput calldata input) external onlyPublicationAction {
+        _rankedSettleFromAction(input.bountyId, input.bidTotal, input.data, input.fee);
+        postBatch(input.postParams);
     }
 
     /**
@@ -152,7 +205,8 @@ contract Bounties is Ownable, LensExtension {
             revert NFTBounty(bountyId);
         }
         uint256 length = recipients.length;
-        for (uint256 i = 0; i < length;) {
+        uint256 i;
+        while (i < length) {
             rewardNft.mint(recipients[i], bounty.collectionId, 1, "");
             unchecked {
                 ++i;
@@ -215,7 +269,8 @@ contract Bounties is Ownable, LensExtension {
     /// @notice withdraws all accumulated fees
     function withdrawFees(address[] calldata _tokens) external onlyOwner {
         uint256 length = _tokens.length;
-        for (uint256 i = 0; i < length;) {
+        uint256 i;
+        while (i < length) {
             uint256 contractBal = feesEarned[_tokens[i]];
             feesEarned[_tokens[i]] = 0;
             IERC20(_tokens[i]).transfer(owner(), contractBal);
@@ -248,30 +303,35 @@ contract Bounties is Ownable, LensExtension {
         emit SetRewardNft(_rewardNft);
     }
 
+    /**
+     * @notice sets the PublicationBountyAction contract
+     * @param _publicationAction the address of the PublicationBountyAction contract
+     */
+    function setPublicationActionModule(address _publicationAction) external onlyOwner {
+        publicationAction = _publicationAction;
+        emit SetPublicationAction(_publicationAction);
+    }
+
     // INTERNAL FUNCTIONS
 
     /**
      * @notice This is an internal function that verifies the signatures of the recipients
      * @param bountyId The ID of the bounty
-     * @param recipients The list of recipient addresses
-     * @param bids The list of bids amounts for each recipient
-     * @param revShares The list of revenue shares for each recipient
+     * @param data The array of BidFromAction structs
      * @param paymentSignatures The list of payment signatures for each recipient
      */
-    function _verifySignatures(
-        uint256 bountyId,
-        address[] calldata recipients,
-        uint256[] calldata bids,
-        uint256[] calldata revShares,
-        bytes[] calldata paymentSignatures
-    ) internal pure {
-        uint256 length = recipients.length;
-        for (uint256 i = 0; i < length;) {
-            bytes32 bidHash =
-                keccak256(abi.encode(bountyId, recipients[i], bids[i], revShares[i])).toEthSignedMessageHash();
+    function _verifySignatures(uint256 bountyId, BidFromAction[] calldata data, bytes[] calldata paymentSignatures)
+        internal
+        pure
+    {
+        uint256 length = data.length;
+        uint256 i = 0;
+        while (i < length) {
+            bytes32 bidHash = keccak256(abi.encode(bountyId, data[i].recipient, data[i].bid, data[i].revShare))
+                .toEthSignedMessageHash();
 
-            if (recipients[i] != bidHash.recover(paymentSignatures[i])) {
-                revert InvalidSignature(recipients[i]);
+            if (data[i].recipient != bidHash.recover(paymentSignatures[i])) {
+                revert InvalidSignature(data[i].recipient);
             }
             unchecked {
                 ++i;
@@ -280,18 +340,12 @@ contract Bounties is Ownable, LensExtension {
     }
 
     /**
-     * @dev disperse funds to recipeints
+     * @dev disperse funds to recipients
      * @param bountyId bounty to settle
-     * @param recipients list of addresses to disperse to
-     * @param bids list of bids amounts to go to each recipient
+     * @param data array of data with recipients, amounts, and rev share
+     * @param fee fee for uniswap pool if swap is needed for rev share
      */
-    function _rankedSettle(
-        uint256 bountyId,
-        address[] calldata recipients,
-        uint256[] calldata bids,
-        uint256[] calldata revShares,
-        uint24 fee
-    ) internal {
+    function _rankedSettle(uint256 bountyId, BidFromAction[] calldata data, uint24 fee) internal {
         Bounty memory bounty = bounties[bountyId];
         if (bounty.collectionId != 0) {
             revert NFTBounty(bountyId);
@@ -301,9 +355,10 @@ contract Bounties is Ownable, LensExtension {
         }
 
         uint256 bidTotal;
-        uint256 length = recipients.length;
-        for (uint256 i = 0; i < length;) {
-            bidTotal += bids[i];
+        uint256 length = data.length;
+        uint256 i;
+        while (i < length) {
+            bidTotal += data[i].bid;
             unchecked {
                 ++i;
             }
@@ -319,37 +374,74 @@ contract Bounties is Ownable, LensExtension {
         feesEarned[bounty.token] += newFees;
 
         IERC20 token = IERC20(bounty.token);
-        for (uint256 i = 0; i < length;) {
-            _bidPayment(recipients[i], token, bids[i], revShares[i], fee);
-            madSBT.handleRewardsUpdate(recipients[i], collectionId, 4);
+        i = 0;
+        while (i < length) {
+            _bidPayment(token, data[i], fee);
+            madSBT.handleRewardsUpdate(data[i].recipient, collectionId, BID_ACCEPT_REWARD_ENUM);
 
             unchecked {
                 ++i;
             }
         }
 
-        emit BountyPayments(bountyId, recipients, bidTotal);
+        emit BountyPayments(bountyId, bidTotal);
+    }
+
+    /**
+     * @dev disperse funds to recipients
+     * @param bountyId bounty to settle
+     * @param bidTotal total amount to disburse
+     * @param data array of data with recipients, amounts, and rev share
+     * @param fee uniswap v3 fee in case of rev share swap
+     */
+    function _rankedSettleFromAction(uint256 bountyId, uint256 bidTotal, BidFromAction[] calldata data, uint24 fee)
+        internal
+    {
+        Bounty memory bounty = bounties[bountyId];
+
+        uint256 newFees = calcFee(bidTotal);
+        uint256 total = newFees + bidTotal;
+        if (total > bounty.amount) {
+            revert InvalidBids(total);
+        }
+
+        bounties[bountyId].amount -= total;
+        feesEarned[bounty.token] += newFees;
+
+        IERC20 token = IERC20(bounty.token);
+        uint256 i;
+        while (i < data.length) {
+            _bidPayment(token, data[i], fee);
+
+            madSBT.handleRewardsUpdate(data[i].recipient, collectionId, BID_ACCEPT_REWARD_ENUM);
+
+            unchecked {
+                i++;
+            }
+        }
+
+        emit BountyPayments(bountyId, bidTotal);
     }
 
     /**
      * @dev disburses funds to a recipient, if they have a rev share setup it will be paid out
-     * @param recipient address to disperse to
      * @param token token to disperse
-     * @param amount amount of token to disperse
+     * @param data BidFromAction struct with recipient, amount, and rev share
+     * @param fee uniswap v3 fee in case of rev share swap
      */
-    function _bidPayment(address recipient, IERC20 token, uint256 amount, uint256 revShareSplit, uint24 fee) internal {
+    function _bidPayment(IERC20 token, BidFromAction calldata data, uint24 fee) internal {
         uint256 revShareAmount;
-        if (revShareSplit > 0) {
-            uint256 _collectionId = madSBT.activeCollection(recipient);
+        if (data.revShare > 0) {
+            uint256 _collectionId = madSBT.activeCollection(data.recipient);
             if (_collectionId != 0) {
                 // if user has a collection
                 unchecked {
-                    revShareAmount = revShareSplit * amount / 100_00;
+                    revShareAmount = data.revShare * data.bid / 100_00;
                 }
                 RevShare.distribute(madSBT, revShareAmount, _collectionId, address(token), swapRouter, fee);
             }
         }
-        token.transfer(recipient, amount - revShareAmount);
+        token.transfer(data.recipient, data.bid - revShareAmount);
     }
 
     /// @notice fallback function to prevent accidental ether transfers

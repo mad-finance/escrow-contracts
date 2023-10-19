@@ -48,7 +48,7 @@ contract BountiesTest is Test {
     address public bidderAddress = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
     address public bidderAddress2 = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
 
-    uint bidderProfileId = 236;
+    uint256 bidderProfileId = 236;
 
     uint256 bidAmount1 = 75_000;
     uint256 bidAmount2 = 25_000;
@@ -114,23 +114,18 @@ contract BountiesTest is Test {
         recipients[0] = bidderAddress;
 
         uint256[] memory bids = new uint256[](1);
-        bids[0] = 12;
+        bids[0] = bidAmount1;
 
         uint256[] memory revShares = new uint256[](1);
         revShares[0] = 0;
 
-        bytes32 digest =
-            keccak256(abi.encode(newBountyId, bidderAddress, bids[0], revShares[0])).toEthSignedMessageHash();
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(bidderPrivateKey, digest);
+        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
 
-        bytes[] memory paymentSignatures = new bytes[](1);
-        paymentSignatures[0] = abi.encodePacked(r, s, v);
+        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
 
         Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
             bountyId: newBountyId,
-            recipients: recipients,
-            bids: bids,
-            revShares: revShares,
+            data: data,
             paymentSignatures: paymentSignatures,
             postParams: new Types.PostParams[](0),
             signatures: new Types.EIP712Signature[](0),
@@ -162,21 +157,13 @@ contract BountiesTest is Test {
         revShares[0] = 0;
         revShares[1] = 0;
 
-        bytes[] memory paymentSignatures = new bytes[](2);
-        bytes32 digest =
-            keccak256(abi.encode(newBountyId, recipients[0], bids[0], revShares[0])).toEthSignedMessageHash();
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(bidderPrivateKey, digest);
-        paymentSignatures[0] = abi.encodePacked(r, s, v);
+        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
 
-        digest = keccak256(abi.encode(newBountyId, recipients[1], bids[1], revShares[1])).toEthSignedMessageHash();
-        (v, r, s) = vm.sign(bidderPrivateKey2, digest);
-        paymentSignatures[1] = abi.encodePacked(r, s, v);
+        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
 
         Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
             bountyId: newBountyId,
-            recipients: recipients,
-            bids: bids,
-            revShares: revShares,
+            data: data,
             paymentSignatures: paymentSignatures,
             postParams: new Types.PostParams[](0),
             signatures: new Types.EIP712Signature[](0),
@@ -206,43 +193,33 @@ contract BountiesTest is Test {
 
         uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
 
-        {
-            address[] memory recipients = new address[](2);
-            recipients[0] = bidderAddress;
-            recipients[1] = bidderAddress2;
+        address[] memory recipients = new address[](2);
+        recipients[0] = bidderAddress;
+        recipients[1] = bidderAddress2;
 
-            uint256[] memory bids = new uint256[](2);
-            bids[0] = bidAmount1;
-            bids[1] = bidAmount2;
+        uint256[] memory bids = new uint256[](2);
+        bids[0] = bidAmount1;
+        bids[1] = bidAmount2;
 
-            uint256[] memory revShares = new uint256[](2);
-            revShares[0] = 0;
-            revShares[1] = 0;
+        uint256[] memory revShares = new uint256[](2);
+        revShares[0] = 0;
+        revShares[1] = 0;
 
-            bytes[] memory paymentSignatures = new bytes[](2);
-            bytes32 digest =
-                keccak256(abi.encode(newBountyId, recipients[0], bids[0], revShares[0])).toEthSignedMessageHash();
-            (uint8 v, bytes32 r, bytes32 s) = vm.sign(bidderPrivateKey, digest);
-            paymentSignatures[0] = abi.encodePacked(r, s, v);
+        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
 
-            digest = keccak256(abi.encode(newBountyId, recipients[1], bids[1], revShares[1])).toEthSignedMessageHash();
-            (v, r, s) = vm.sign(bidderPrivateKey2, digest);
-            paymentSignatures[1] = abi.encodePacked(r, s, v);
+        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
 
-            Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
-                bountyId: newBountyId,
-                recipients: recipients,
-                bids: bids,
-                revShares: revShares,
-                paymentSignatures: paymentSignatures,
-                postParams: new Types.PostParams[](0),
-                signatures: new Types.EIP712Signature[](0),
-                fee: 500
-            });
+        Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
+            bountyId: newBountyId,
+            data: data,
+            paymentSignatures: paymentSignatures,
+            postParams: new Types.PostParams[](0),
+            signatures: new Types.EIP712Signature[](0),
+            fee: 500
+        });
 
-            bounties.rankedSettle(input);
-            bounties.close(newBountyId);
-        }
+        bounties.rankedSettle(input);
+        bounties.close(newBountyId);
 
         uint256 payout = bidAmount1 + bidAmount2;
         uint256 feePaid = (payout * fee) / 10_000;
@@ -280,21 +257,13 @@ contract BountiesTest is Test {
         revShares[0] = 0;
         revShares[1] = 0;
 
-        bytes[] memory paymentSignatures = new bytes[](2);
-        bytes32 digest =
-            keccak256(abi.encode(newBountyId, recipients[0], bids[0], revShares[0])).toEthSignedMessageHash();
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(bidderPrivateKey, digest);
-        paymentSignatures[0] = abi.encodePacked(r, s, v);
+        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
 
-        digest = keccak256(abi.encode(newBountyId, recipients[1], bids[1], revShares[1])).toEthSignedMessageHash();
-        (v, r, s) = vm.sign(bidderPrivateKey2, digest);
-        paymentSignatures[1] = abi.encodePacked(r, s, v);
+        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
 
         Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
             bountyId: newBountyId,
-            recipients: recipients,
-            bids: bids,
-            revShares: revShares,
+            data: data,
             paymentSignatures: paymentSignatures,
             postParams: new Types.PostParams[](0),
             signatures: new Types.EIP712Signature[](0),
@@ -326,21 +295,13 @@ contract BountiesTest is Test {
         revShares[0] = 0;
         revShares[1] = 0;
 
-        bytes[] memory paymentSignatures = new bytes[](2);
-        bytes32 digest =
-            keccak256(abi.encode(newBountyId, recipients[0], bids[0], revShares[0])).toEthSignedMessageHash();
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(bidderPrivateKey, digest);
-        paymentSignatures[0] = abi.encodePacked(r, s, v);
+        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
 
-        digest = keccak256(abi.encode(newBountyId, recipients[1], bids[1], revShares[1])).toEthSignedMessageHash();
-        (v, r, s) = vm.sign(bidderPrivateKey2, digest);
-        paymentSignatures[1] = abi.encodePacked(r, s, v);
+        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
 
         Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
             bountyId: newBountyId,
-            recipients: recipients,
-            bids: bids,
-            revShares: revShares,
+            data: data,
             paymentSignatures: paymentSignatures,
             postParams: new Types.PostParams[](0),
             signatures: new Types.EIP712Signature[](0),
@@ -363,43 +324,33 @@ contract BountiesTest is Test {
 
         uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
 
-        {
-            address[] memory recipients = new address[](2);
-            recipients[0] = bidderAddress;
-            recipients[1] = bidderAddress2;
+        address[] memory recipients = new address[](2);
+        recipients[0] = bidderAddress;
+        recipients[1] = bidderAddress2;
 
-            uint256[] memory bids = new uint256[](2);
-            bids[0] = bidAmount1;
-            bids[1] = bidAmount2;
+        uint256[] memory bids = new uint256[](2);
+        bids[0] = bidAmount1;
+        bids[1] = bidAmount2;
 
-            uint256[] memory revShares = new uint256[](2);
-            revShares[0] = 0;
-            revShares[1] = 0;
+        uint256[] memory revShares = new uint256[](2);
+        revShares[0] = 0;
+        revShares[1] = 0;
 
-            bytes[] memory paymentSignatures = new bytes[](2);
-            bytes32 digest =
-                keccak256(abi.encode(newBountyId, recipients[0], bids[0], revShares[0])).toEthSignedMessageHash();
-            (uint8 v, bytes32 r, bytes32 s) = vm.sign(bidderPrivateKey, digest);
-            paymentSignatures[0] = abi.encodePacked(r, s, v);
+        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
 
-            digest = keccak256(abi.encode(newBountyId, recipients[1], bids[1], revShares[1])).toEthSignedMessageHash();
-            (v, r, s) = vm.sign(bidderPrivateKey2, digest);
-            paymentSignatures[1] = abi.encodePacked(r, s, v);
+        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
 
-            Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
-                bountyId: newBountyId,
-                recipients: recipients,
-                bids: bids,
-                revShares: revShares,
-                paymentSignatures: paymentSignatures,
-                postParams: new Types.PostParams[](0),
-                signatures: new Types.EIP712Signature[](0),
-                fee: 500
-            });
+        Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
+            bountyId: newBountyId,
+            data: data,
+            paymentSignatures: paymentSignatures,
+            postParams: new Types.PostParams[](0),
+            signatures: new Types.EIP712Signature[](0),
+            fee: 500
+        });
 
-            bounties.rankedSettle(input);
-            bounties.close(newBountyId);
-        }
+        bounties.rankedSettle(input);
+        bounties.close(newBountyId);
 
         uint256 feePaid = ((bidAmount1 + bidAmount2) * fee) / 10_000;
         assertEq(usdc.balanceOf(defaultSender), beforeBal - (bidAmount1 + bidAmount2 + feePaid));
@@ -461,21 +412,13 @@ contract BountiesTest is Test {
         revShares[0] = 10_00;
         revShares[1] = 10_00;
 
-        bytes[] memory paymentSignatures = new bytes[](2);
-        bytes32 digest =
-            keccak256(abi.encode(newBountyId, recipients[0], bids[0], revShares[0])).toEthSignedMessageHash();
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(bidderPrivateKey, digest);
-        paymentSignatures[0] = abi.encodePacked(r, s, v);
+        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
 
-        digest = keccak256(abi.encode(newBountyId, recipients[1], bids[1], revShares[1])).toEthSignedMessageHash();
-        (v, r, s) = vm.sign(bidderPrivateKey2, digest);
-        paymentSignatures[1] = abi.encodePacked(r, s, v);
+        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
 
         Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
             bountyId: newBountyId,
-            recipients: recipients,
-            bids: bids,
-            revShares: revShares,
+            data: data,
             paymentSignatures: paymentSignatures,
             postParams: new Types.PostParams[](0),
             signatures: new Types.EIP712Signature[](0),
@@ -502,45 +445,35 @@ contract BountiesTest is Test {
         uint256 recipient1BalanceBefore = wmatic.balanceOf(bidderAddress);
         uint256 recipient2BalanceBefore = wmatic.balanceOf(bidderAddress2);
 
-        {
-            uint256 newBountyId = bounties.deposit(address(wmatic), bountyAmount);
+        uint256 newBountyId = bounties.deposit(address(wmatic), bountyAmount);
 
-            address[] memory recipients = new address[](2);
-            recipients[0] = bidderAddress;
-            recipients[1] = bidderAddress2;
+        address[] memory recipients = new address[](2);
+        recipients[0] = bidderAddress;
+        recipients[1] = bidderAddress2;
 
-            uint256[] memory bids = new uint256[](2);
-            bids[0] = bidAmount1;
-            bids[1] = bidAmount2;
+        uint256[] memory bids = new uint256[](2);
+        bids[0] = bidAmount1;
+        bids[1] = bidAmount2;
 
-            uint256[] memory revShares = new uint256[](2);
-            revShares[0] = 10_00;
-            revShares[1] = 10_00;
+        uint256[] memory revShares = new uint256[](2);
+        revShares[0] = 10_00;
+        revShares[1] = 10_00;
 
-            bytes[] memory paymentSignatures = new bytes[](2);
-            bytes32 digest =
-                keccak256(abi.encode(newBountyId, recipients[0], bids[0], revShares[0])).toEthSignedMessageHash();
-            (uint8 v, bytes32 r, bytes32 s) = vm.sign(bidderPrivateKey, digest);
-            paymentSignatures[0] = abi.encodePacked(r, s, v);
+        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
 
-            digest = keccak256(abi.encode(newBountyId, recipients[1], bids[1], revShares[1])).toEthSignedMessageHash();
-            (v, r, s) = vm.sign(bidderPrivateKey2, digest);
-            paymentSignatures[1] = abi.encodePacked(r, s, v);
+        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
 
-            Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
-                bountyId: newBountyId,
-                recipients: recipients,
-                bids: bids,
-                revShares: revShares,
-                paymentSignatures: paymentSignatures,
-                postParams: new Types.PostParams[](0),
-                signatures: new Types.EIP712Signature[](0),
-                fee: 500
-            });
+        Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
+            bountyId: newBountyId,
+            data: data,
+            paymentSignatures: paymentSignatures,
+            postParams: new Types.PostParams[](0),
+            signatures: new Types.EIP712Signature[](0),
+            fee: 500
+        });
 
-            bounties.rankedSettle(input);
-            bounties.close(newBountyId);
-        }
+        bounties.rankedSettle(input);
+        bounties.close(newBountyId);
 
         uint256 expected1 = 90 * bidAmount1 / 100;
         uint256 expected2 = 90 * bidAmount2 / 100;
@@ -572,63 +505,95 @@ contract BountiesTest is Test {
         helperMintApproveTokens(bountyAmount, defaultSender, usdc);
         uint256 tokenAmountBefore = usdc.balanceOf(defaultSender);
 
-        {
-            uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
+        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
 
-            address[] memory recipients = new address[](1);
-            recipients[0] = bidderAddress;
+        address[] memory recipients = new address[](1);
+        recipients[0] = bidderAddress;
 
-            uint256[] memory bids = new uint256[](1);
-            bids[0] = bidAmount1;
+        uint256[] memory bids = new uint256[](1);
+        bids[0] = bidAmount1;
 
-            uint256[] memory revShares = new uint256[](1);
-            revShares[0] = 0;
+        uint256[] memory revShares = new uint256[](1);
+        revShares[0] = 0;
 
-            bytes[] memory paymentSignatures = new bytes[](1);
-            bytes32 digest =
-                keccak256(abi.encode(newBountyId, recipients[0], bids[0], revShares[0])).toEthSignedMessageHash();
-            (uint8 v, bytes32 r, bytes32 s) = vm.sign(bidderPrivateKey, digest);
-            paymentSignatures[0] = abi.encodePacked(r, s, v);
+        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
 
-            uint256 nonce = IHubTest(lensHub).nonces(bidderAddress);
-            uint256 deadline = block.timestamp + 100;
+        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
 
-            Types.PostParams[] memory posts = new Types.PostParams[](1);
-            posts[0] = Types.PostParams({
-                profileId: bidderProfileId,
-                contentURI: "ipfs://123",
-                actionModules: new address[](0),
-                actionModulesInitDatas: new bytes[](0),
-                referenceModule: address(0),
-                referenceModuleInitData: new bytes(0)
-            });
+        uint256 nonce = IHubTest(lensHub).nonces(bidderAddress);
+        uint256 deadline = block.timestamp + 100;
 
-            Types.EIP712Signature[] memory postSignatures = new Types.EIP712Signature[](1);
-            postSignatures[0] = _getSigStruct({
-                signer: bidderAddress,
-                pKey: bidderPrivateKey,
-                digest: _getPostTypedDataHash(posts[0], nonce, deadline),
-                deadline: deadline
-            });
+        Types.PostParams[] memory posts = new Types.PostParams[](1);
+        posts[0] = Types.PostParams({
+            profileId: bidderProfileId,
+            contentURI: "ipfs://123",
+            actionModules: new address[](0),
+            actionModulesInitDatas: new bytes[](0),
+            referenceModule: address(0),
+            referenceModuleInitData: new bytes(0)
+        });
 
-            Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
-                bountyId: newBountyId,
-                recipients: recipients,
-                bids: bids,
-                revShares: revShares,
-                paymentSignatures: paymentSignatures,
-                postParams: posts,
-                signatures: postSignatures,
-                fee: 500
-            });
+        Types.EIP712Signature[] memory postSignatures = new Types.EIP712Signature[](1);
+        postSignatures[0] = _getSigStruct({
+            signer: bidderAddress,
+            pKey: bidderPrivateKey,
+            digest: _getPostTypedDataHash(posts[0], nonce, deadline),
+            deadline: deadline
+        });
 
-            bounties.rankedSettle(input);
-            bounties.close(newBountyId);
-        }
+        Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
+            bountyId: newBountyId,
+            data: data,
+            paymentSignatures: paymentSignatures,
+            postParams: posts,
+            signatures: postSignatures,
+            fee: 500
+        });
+
+        bounties.rankedSettle(input);
+        bounties.close(newBountyId);
 
         assertEq(usdc.balanceOf(bidderAddress), bidAmount1);
         assertEq(usdc.balanceOf(defaultSender), tokenAmountBefore - bidAmount1);
         vm.stopPrank();
+    }
+
+    // HELPERS
+    function createPaymentSignatures(
+        uint256 newBountyId,
+        address[] memory recipients,
+        uint256[] memory bids,
+        uint256[] memory revShares
+    ) internal view returns (bytes[] memory) {
+        bytes[] memory paymentSignatures = new bytes[](recipients.length);
+        uint256 i;
+        while (i < recipients.length) {
+            bytes32 digest =
+                keccak256(abi.encode(newBountyId, recipients[i], bids[i], revShares[i])).toEthSignedMessageHash();
+            uint256 privateKey = i == 0 ? bidderPrivateKey : bidderPrivateKey2;
+            (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
+            paymentSignatures[i] = abi.encodePacked(r, s, v);
+            unchecked {
+                ++i;
+            }
+        }
+        return paymentSignatures;
+    }
+
+    function createBidFromActionParam(address[] memory recipients, uint256[] memory bids, uint256[] memory revShares)
+        internal
+        pure
+        returns (Bounties.BidFromAction[] memory)
+    {
+        Bounties.BidFromAction[] memory data = new Bounties.BidFromAction[](recipients.length);
+        uint256 i;
+        while (i < recipients.length) {
+            data[i] = Bounties.BidFromAction({recipient: recipients[i], bid: bids[i], revShare: revShares[i]});
+            unchecked {
+                ++i;
+            }
+        }
+        return data;
     }
 
     // INTERNAL LENS TYPED DATA AND SIGNATURE HELPERS
