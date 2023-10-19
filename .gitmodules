@@ -4,6 +4,7 @@
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts/commit/fd81a96f01cc42ef1c9a5399364968d0e07e9e90
+	branch = release-v4.9
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
