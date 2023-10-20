@@ -521,7 +521,7 @@ contract BountiesTest is Test {
         Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
 
         uint256 nonce = IHubTest(lensHub).nonces(bidderAddress);
-        uint256 deadline = block.timestamp + 100;
+        uint256 deadline = type(uint256).max;
 
         Types.PostParams[] memory posts = new Types.PostParams[](1);
         posts[0] = Types.PostParams({
@@ -530,7 +530,7 @@ contract BountiesTest is Test {
             actionModules: new address[](0),
             actionModulesInitDatas: new bytes[](0),
             referenceModule: address(0),
-            referenceModuleInitData: new bytes(0)
+            referenceModuleInitData: ""
         });
 
         Types.EIP712Signature[] memory postSignatures = new Types.EIP712Signature[](1);
