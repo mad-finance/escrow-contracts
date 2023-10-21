@@ -44,13 +44,13 @@ contract LensExtension {
         }
     }
 
-    function postBatch(Types.PostParams[] calldata postParams)
-        public
-    {
+    function postBatch(Types.PostParams[] calldata postParams) public {
         uint256 i;
         while (i < postParams.length) {
             lensHub.post(postParams[i]);
-            unchecked { i++; }
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -101,13 +101,13 @@ contract LensExtension {
     }
 
     function collectWithSigBatch(
-        Types.CollectParams[] calldata collectParams,
+        Types.LegacyCollectParams[] calldata collectParams,
         Types.EIP712Signature[] calldata signatures
     ) public {
         require(collectParams.length == signatures.length, "LensExtension: invalid length");
         uint256 length = signatures.length;
         for (uint256 i = 0; i < length;) {
-            lensHub.collectWithSig(collectParams[i], signatures[i]);
+            lensHub.collectLegacyWithSig(collectParams[i], signatures[i]);
             unchecked {
                 ++i;
             }

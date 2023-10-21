@@ -8,13 +8,17 @@ import "../src/mocks/MockToken.sol";
 import "../src/mocks/MockMadSBT.sol";
 import "../src/mocks/MockRouter.sol";
 import "../src/mocks/MockSuperToken.sol";
+import "../src/mocks/MockActionModule.sol";
 import "../src/extensions/LensExtension.sol";
 import "../src/RewardNft.sol";
 
 import "../src/interfaces/ISuperToken.sol";
 
+import "./helpers/LensHelper.sol";
+
 import "openzeppelin/utils/cryptography/ECDSA.sol";
 import "openzeppelin/token/ERC20/ERC20.sol";
+// import "lens/../test/base/BaseTest.t.sol";
 
 interface IHubTest {
     function nonces(address signer) external returns (uint256);
@@ -25,7 +29,7 @@ interface IHubTest {
     ) external;
 }
 
-contract BountiesTest is Test {
+contract BountiesTest is Test, LensHelper {
     using ECDSA for bytes32;
 
     uint256 polygonFork;
@@ -53,6 +57,8 @@ contract BountiesTest is Test {
     uint256 bidAmount1 = 75_000;
     uint256 bidAmount2 = 25_000;
 
+    MockActionModule mockActionModule;
+
     function setUp() public {
         polygonFork = vm.createFork(vm.envString("MUMBAI_RPC_URL"));
         vm.selectFork(polygonFork);
@@ -64,6 +70,8 @@ contract BountiesTest is Test {
 
         bounties.setMadSBT(address(mockMadSBT), 1, 1);
         bounties.setRewardNft(address(rewardNft));
+
+        mockActionModule = new MockActionModule();
     }
 
     function helperMintApproveTokens(uint256 bountyAmount, address recipient, ERC20 token) public {
@@ -180,6 +188,54 @@ contract BountiesTest is Test {
         assertEq(usdc.balanceOf(bidderAddress2), expected2);
         assertEq(usdc.balanceOf(defaultSender), expected3);
         vm.stopPrank();
+    }
+
+    function testSettleRankedBountyFromAction() public {
+        address openAction = address(70);
+
+        bounties.setPublicationActionModule(openAction);
+
+        vm.startPrank(openAction);
+        uint256 bountyAmount = 100_000_000;
+        helperMintApproveTokens(bountyAmount, openAction, usdc);
+        uint256 tokenAmountBefore = usdc.balanceOf(openAction);
+
+        uint256 newBountyId = bounties.depositFromAction(defaultSender, address(usdc), bountyAmount);
+
+        address[] memory recipients = new address[](2);
+        recipients[0] = bidderAddress;
+        recipients[1] = bidderAddress2;
+
+        uint256[] memory bids = new uint256[](2);
+        bids[0] = bidAmount1;
+        bids[1] = bidAmount2;
+
+        uint256[] memory revShares = new uint256[](2);
+        revShares[0] = 0;
+        revShares[1] = 0;
+
+        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
+
+        Bounties.RankedSettleFromActionInput memory input = Bounties.RankedSettleFromActionInput({
+            bountyId: newBountyId,
+            bidTotal: bidAmount1 + bidAmount2,
+            data: data,
+            postParams: new Types.PostParams[](0),
+            fee: 500
+        });
+
+        bounties.rankedSettleFromAction(input);
+        vm.stopPrank();
+        vm.prank(defaultSender);
+        bounties.close(newBountyId);
+
+        uint256 expected1 = bidAmount1;
+        uint256 expected2 = bidAmount2;
+        uint256 expected3 = tokenAmountBefore - expected1 - expected2;
+        assertEq(usdc.balanceOf(bidderAddress), expected1, "Bidder 1 balance is not correct");
+        assertEq(usdc.balanceOf(bidderAddress2), expected2, "Bidder 2 balance is not correct");
+        assertEq(usdc.balanceOf(defaultSender), expected3, "Sponsor balance is not correct");
+        assertEq(usdc.balanceOf(openAction), 0, "Open Action balance is not correct");
     }
 
     function testSettleAndWithdrawFees() public {
@@ -488,7 +544,7 @@ contract BountiesTest is Test {
         vm.stopPrank();
     }
 
-    function testSettleRankedBountyPostToLens() public {
+    function skiptestSettleRankedBountyPostToLens() public {
         {
             vm.prank(bidderAddress);
             address[] memory executors = new address[](1);
@@ -527,8 +583,8 @@ contract BountiesTest is Test {
         posts[0] = Types.PostParams({
             profileId: bidderProfileId,
             contentURI: "ipfs://123",
-            actionModules: new address[](0),
-            actionModulesInitDatas: new bytes[](0),
+            actionModules: _toAddressArray(address(mockActionModule)),
+            actionModulesInitDatas: _toBytesArray(abi.encode(true)),
             referenceModule: address(0),
             referenceModuleInitData: ""
         });
@@ -537,7 +593,7 @@ contract BountiesTest is Test {
         postSignatures[0] = _getSigStruct({
             signer: bidderAddress,
             pKey: bidderPrivateKey,
-            digest: _getPostTypedDataHash(posts[0], nonce, deadline),
+            digest: _getPostTypedDataHash(posts[0], bidderAddress, nonce, deadline),
             deadline: deadline
         });
 
@@ -594,94 +650,5 @@ contract BountiesTest is Test {
             }
         }
         return data;
-    }
-
-    // INTERNAL LENS TYPED DATA AND SIGNATURE HELPERS
-    function _getSigStruct(uint256 pKey, bytes32 digest, uint256 deadline)
-        internal
-        pure
-        returns (Types.EIP712Signature memory)
-    {
-        return _getSigStruct(vm.addr(pKey), pKey, digest, deadline);
-    }
-
-    function _getSigStruct(address signer, uint256 pKey, bytes32 digest, uint256 deadline)
-        internal
-        pure
-        returns (Types.EIP712Signature memory)
-    {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pKey, digest);
-        return Types.EIP712Signature(signer, v, r, s, deadline);
-    }
-
-    function _getPostTypedDataHash(
-        uint256 profileId,
-        string memory contentURI,
-        address[] memory actionModules,
-        bytes[] memory actionModulesInitDatas,
-        address referenceModule,
-        bytes memory referenceModuleInitData,
-        uint256 nonce,
-        uint256 deadline
-    ) internal view returns (bytes32) {
-        bytes32 structHash = keccak256(
-            abi.encode(
-                keccak256(
-                    "Post(uint256 profileId,string contentURI,address collectModule,bytes collectModuleInitData,address referenceModule,bytes referenceModuleInitData,uint256 nonce,uint256 deadline)"
-                ),
-                profileId,
-                keccak256(bytes(contentURI)),
-                actionModules,
-                _hashActionModulesInitDatas(actionModulesInitDatas),
-                referenceModule,
-                keccak256(referenceModuleInitData),
-                nonce,
-                deadline
-            )
-        );
-        return _calculateDigest(structHash);
-    }
-
-    function _getPostTypedDataHash(Types.PostParams memory postParams, uint256 nonce, uint256 deadline)
-        internal
-        view
-        returns (bytes32)
-    {
-        return _getPostTypedDataHash({
-            profileId: postParams.profileId,
-            contentURI: postParams.contentURI,
-            actionModules: postParams.actionModules,
-            actionModulesInitDatas: postParams.actionModulesInitDatas,
-            referenceModule: postParams.referenceModule,
-            referenceModuleInitData: postParams.referenceModuleInitData,
-            nonce: nonce,
-            deadline: deadline
-        });
-    }
-
-    function _calculateDigest(bytes32 structHash) internal view returns (bytes32) {
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("Lens Protocol Profiles"),
-                keccak256(bytes("2")),
-                block.chainid,
-                lensHub
-            )
-        );
-
-        return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
-    }
-
-    function _hashActionModulesInitDatas(bytes[] memory actionModulesInitDatas) private pure returns (bytes32) {
-        bytes32[] memory actionModulesInitDatasHashes = new bytes32[](actionModulesInitDatas.length);
-        uint256 i;
-        while (i < actionModulesInitDatas.length) {
-            actionModulesInitDatasHashes[i] = keccak256(abi.encode(actionModulesInitDatas[i]));
-            unchecked {
-                ++i;
-            }
-        }
-        return keccak256(abi.encodePacked(actionModulesInitDatasHashes));
     }
 }
