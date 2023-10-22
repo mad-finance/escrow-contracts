@@ -38,7 +38,6 @@ contract BountiesTest is Test, LensHelper {
     RewardNft rewardNft;
     MockMadSBT mockMadSBT;
 
-    address lensHub = 0xC1E77eE73403B8a7478884915aA599932A677870; // lens hub proxy v2 preview
     address swapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564; // uniswap swap router
 
     ERC20 usdc = ERC20(0xbe49ac1EadAc65dccf204D4Df81d650B50122aB2);
@@ -544,15 +543,15 @@ contract BountiesTest is Test, LensHelper {
         vm.stopPrank();
     }
 
-    function skiptestSettleRankedBountyPostToLens() public {
+    function testSettleRankedBountyPostToLens() public {
         {
-            vm.prank(bidderAddress);
             address[] memory executors = new address[](1);
             executors[0] = defaultSender;
 
             bool[] memory approvals = new bool[](1);
             approvals[0] = true;
 
+            vm.prank(bidderAddress);
             IHubTest(lensHub).changeDelegatedExecutorsConfig(bidderProfileId, executors, approvals);
         }
 
@@ -591,7 +590,6 @@ contract BountiesTest is Test, LensHelper {
 
         Types.EIP712Signature[] memory postSignatures = new Types.EIP712Signature[](1);
         postSignatures[0] = _getSigStruct({
-            signer: bidderAddress,
             pKey: bidderPrivateKey,
             digest: _getPostTypedDataHash(posts[0], bidderAddress, nonce, deadline),
             deadline: deadline

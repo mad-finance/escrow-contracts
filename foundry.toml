@@ -14,3 +14,4 @@ polygon = "${POLYGON_RPC_URL}"
 
 [etherscan]
 polygon = { key = "${ETHERSCAN_API_KEY}" }
+mumbai = { key = "${ETHERSCAN_API_KEY}" }

@@ -6,7 +6,10 @@ import "lens/interfaces/ILensProtocol.sol";
 import {Typehash} from "lens/libraries/constants/TypeHash.sol";
 
 contract LensHelper is Test {
-    address _lensHub = 0xC1E77eE73403B8a7478884915aA599932A677870; // lens hub proxy v2 preview
+    address lensHub = 0xC1E77eE73403B8a7478884915aA599932A677870; // lens hub proxy v2 preview
+
+    string constant EIP712_DOMAIN_VERSION = "2";
+    bytes32 constant EIP712_DOMAIN_VERSION_HASH = keccak256(bytes(EIP712_DOMAIN_VERSION));
 
     function _toAddressArray(address a) internal pure returns (address[] memory) {
         address[] memory ret = new address[](1);
@@ -91,15 +94,13 @@ contract LensHelper is Test {
     }
 
     function _calculateDigest(bytes32 structHash) internal view returns (bytes32) {
-        string memory EIP712_DOMAIN_VERSION = "2";
-        bytes32 EIP712_DOMAIN_VERSION_HASH = keccak256(bytes(EIP712_DOMAIN_VERSION));
         bytes32 domainSeparator = keccak256(
             abi.encode(
                 Typehash.EIP712_DOMAIN,
                 keccak256("Lens Protocol Profiles"),
                 EIP712_DOMAIN_VERSION_HASH,
                 block.chainid,
-                _lensHub
+                lensHub
             )
         );
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));

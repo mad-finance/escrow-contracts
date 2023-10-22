@@ -50,11 +50,11 @@ An nft contract with unlimited supply that requires a signature from the contrac
 ```bash
 source .env
 
-# deploy escrow contract
-forge script script/DeployEscrow.s.sol:DeployEscrow --rpc-url polygon --broadcast --verify -vvvv
+# deploy bounties contract
+forge script script/DeployBounties.s.sol:DeployBounties --rpc-url mumbai --broadcast --verify -vvvv
 
 # withdraw fees
-forge script script/WithdrawFees.s.sol:WithdrawFees --rpc-url polygon --broadcast -vvvv
+forge script script/WithdrawFees.s.sol:WithdrawFees --rpc-url mumbai --broadcast -vvvv
 ```
 
 ## Bounties in depth
@@ -82,3 +82,13 @@ forge script script/WithdrawFees.s.sol:WithdrawFees --rpc-url polygon --broadcas
 - postParams: the params for the post to be made to Lens
 - signatures: signatures from the recipients to verify the lens posts are correct
 - fee: if they include a rev share and the bounty token is not the same as the underlying asset for their mad sbt badge reward super token it will need to be swapped. this fee is the fee for the uniswap pool to swap through. It will be 500, 3000 or 10000 (0.05%, .3% or 1%)
+
+## Deployments
+
+### Mumbai
+
+RevShare: 0xC000253B8CCbbC5dDB0015DC00DAAC850a189850
+
+Bounties: 0x6e3be9016f6994e6e029f5111120c8ef031a8e52
+
+RewardNft: 0x4fb5248161d013ee1d86862fc9783ef4306e805f
