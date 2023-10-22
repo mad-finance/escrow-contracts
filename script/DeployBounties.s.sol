@@ -13,7 +13,7 @@ contract DeployBounties is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         address lensHub = block.chainid == 137
-            ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // polygon
+            ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // TODO: polygon
             : 0xC1E77eE73403B8a7478884915aA599932A677870; // mumbai
 
         uint256 protocolFee = 10_00;
@@ -25,10 +25,11 @@ contract DeployBounties is Script {
 
         Bounties bounties = new Bounties(lensHub, protocolFee, lastBountyId, swapRouter);
 
-        // TODO: fill these in
-        address _madSBT = address(0);
+        address _madSBT = block.chainid == 137
+            ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // TODO: polygon
+            : 0x44a3e77df57a4a6e21aC1994Ef7b4157B3c3653e; // mumbai
         uint256 _collectionId = 1;
-        uint256 _profileId = 1;
+        uint256 _profileId = block.chainid == 137 ? 349 : 99999999; // TODO: polygon profile id
         bounties.setMadSBT(_madSBT, _collectionId, _profileId);
 
         RewardNft rewardNft = new RewardNft(address(bounties));
