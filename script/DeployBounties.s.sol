@@ -27,9 +27,9 @@ contract DeployBounties is Script {
 
         address _madSBT = block.chainid == 137
             ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // TODO: polygon
-            : 0x44a3e77df57a4a6e21aC1994Ef7b4157B3c3653e; // mumbai
+            : 0xb694E0182C8A546dF19411EdFd66AdA2B2d1f3fa; // mumbai
         uint256 _collectionId = 1;
-        uint256 _profileId = block.chainid == 137 ? 349 : 99999999; // TODO: polygon profile id
+        uint256 _profileId = block.chainid == 137 ? 99999999 : 349; // TODO: polygon profile id
         bounties.setMadSBT(_madSBT, _collectionId, _profileId);
 
         RewardNft rewardNft = new RewardNft(address(bounties));
