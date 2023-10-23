@@ -409,11 +409,17 @@ contract Bounties is Ownable, LensExtension {
         feesEarned[bounty.token] += newFees;
 
         IERC20 token = IERC20(bounty.token);
+        uint256 sponsorCollectionId = madSBT.activeCollection(bounty.sponsor);
         uint256 i;
         while (i < data.length) {
             _bidPayment(token, data[i], fee);
 
+            // MADFI BADGE POINTS
             madSBT.handleRewardsUpdate(data[i].recipient, collectionId, BID_ACCEPT_REWARD_ENUM);
+            // SPONSOR BADGE POINTS
+            if (sponsorCollectionId != 0) {
+                madSBT.handleRewardsUpdate(data[i].recipient, sponsorCollectionId, BID_ACCEPT_REWARD_ENUM);
+            }
 
             unchecked {
                 i++;
