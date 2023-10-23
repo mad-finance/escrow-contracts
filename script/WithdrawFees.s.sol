@@ -13,7 +13,7 @@ contract WithdrawFees is Script {
 
         address bountiesAddress = block.chainid == 137
             ? 0x385B33C3127d5AF5F74fB4193a8dFd86D9a4A166 // Polygon
-            : 0x21D076fA57B2da9d8A703464e6E17A22bE2FbB90; // Mumbai
+            : 0xD78722B20B3215975184E50519e5703163f7c7f4; // Mumbai
 
         address[] memory tokens = new address[](1);
         tokens[0] = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174; // USDC

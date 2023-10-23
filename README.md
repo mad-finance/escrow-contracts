@@ -87,8 +87,8 @@ forge script script/WithdrawFees.s.sol:WithdrawFees --rpc-url mumbai --broadcast
 
 ### Mumbai
 
-RevShare: 0x3E6eaece75b350322A81f110E382ecF3f0aa9689
+RevShare: 0x9cA8e9d37cF96d14fDCCf84140Aa74a84E079fcb
 
-Bounties: 0x21D076fA57B2da9d8A703464e6E17A22bE2FbB90
+Bounties: 0xD78722B20B3215975184E50519e5703163f7c7f4
 
-RewardNft: 0x4fb5248161d013Ee1d86862fc9783ef4306E805F
+RewardNft: 0xda26a0146b1fB65320Ad3E70E027B5a7D8b964E5

@@ -17,18 +17,20 @@ __/\\\\____________/\\\\_____/\\\\\\\\\_____/\\\\\\\\\\\\_____/\\\\\\\\\\\\\\\__
 pragma solidity ^0.8.10;
 
 import "openzeppelin/token/ERC1155/ERC1155.sol";
+import "openzeppelin/access/Ownable.sol";
 import "./interfaces/IRewardNft.sol";
 
-contract RewardNft is ERC1155, IRewardNft {
+contract RewardNft is Ownable, ERC1155, IRewardNft {
     address bounties;
     uint256 collectionsCount;
 
     mapping(uint256 => string) public tokenURIs;
 
     event CollectionCreated(uint256 indexed id, string tokenURI);
+    event BountiesSet(address indexed bounties);
 
-    constructor(address _bounties) ERC1155("") {
-        bounties = _bounties;
+    constructor(address _bounties) ERC1155("") Ownable() {
+        setBounties(_bounties);
     }
 
     function createCollection(string calldata _tokenUri) external override onlyBounties returns (uint256) {
@@ -45,6 +47,11 @@ contract RewardNft is ERC1155, IRewardNft {
 
     function uri(uint256 _id) public view override(ERC1155) returns (string memory) {
         return tokenURIs[_id];
+    }
+
+    function setBounties(address _bounties) public onlyOwner {
+        bounties = _bounties;
+        emit BountiesSet(_bounties);
     }
 
     modifier onlyBounties() {

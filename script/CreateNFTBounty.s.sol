@@ -5,7 +5,7 @@ import "forge-std/Script.sol";
 import "forge-std/console.sol";
 import "../src/Bounties.sol";
 
-contract CreateBounty is Script {
+contract CreateNFTBounty is Script {
     function setUp() public {}
 
     function run() public {
@@ -14,7 +14,7 @@ contract CreateBounty is Script {
 
         address bountiesAddress = block.chainid == 137
             ? 0x385B33C3127d5AF5F74fB4193a8dFd86D9a4A166
-            : 0x6E3BE9016f6994e6E029F5111120C8EF031a8E52;
+            : 0xD78722B20B3215975184E50519e5703163f7c7f4;
 
         Bounties bounties = Bounties(payable(bountiesAddress));
         bounties.depositNft("ipfs://bafkreibzte5iaclr7k6qwut5acq6gouhwcvctfjvxan7zyfwg7ffgz6dce");
