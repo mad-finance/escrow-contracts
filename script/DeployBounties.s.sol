@@ -27,7 +27,7 @@ contract DeployBounties is Script {
 
         address _madSBT = block.chainid == 137
             ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // TODO: polygon
-            : 0xb694E0182C8A546dF19411EdFd66AdA2B2d1f3fa; // mumbai
+            : 0x492D70cC758b02E576d3a68D9f560F33472a1Dc9; // mumbai
         uint256 _collectionId = 1;
         uint256 _profileId = block.chainid == 137 ? 99999999 : 349; // TODO: polygon profile id
         bounties.setMadSBT(_madSBT, _collectionId, _profileId);
