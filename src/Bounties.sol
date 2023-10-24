@@ -21,10 +21,11 @@ import "openzeppelin/access/Ownable.sol";
 import "openzeppelin/utils/cryptography/ECDSA.sol";
 import "madfi-protocol/interfaces/IMadSBT.sol";
 import "./extensions/LensExtension.sol";
+import "./extensions/Constants.sol";
 import "./interfaces/IRewardNft.sol";
 import "./libraries/RevShare.sol";
 
-contract Bounties is Ownable, LensExtension {
+contract Bounties is Ownable, LensExtension, Constants {
     using ECDSA for bytes32;
 
     uint256 public protocolFee; // basis points
@@ -63,8 +64,6 @@ contract Bounties is Ownable, LensExtension {
         uint24 fee;
     }
 
-    uint8 public immutable BOUNTY_CREATE_REWARD_ENUM = 3; // to give XP on madfi badge
-    uint8 public immutable BID_ACCEPT_REWARD_ENUM = 4;
     IRewardNft public rewardNft;
     address public publicationAction;
 
@@ -322,15 +321,22 @@ contract Bounties is Ownable, LensExtension {
      */
     function _verifySignatures(uint256 bountyId, BidFromAction[] calldata data, bytes[] calldata paymentSignatures)
         internal
-        pure
+        view
     {
         uint256 length = data.length;
         uint256 i = 0;
         while (i < length) {
-            bytes32 bidHash = keccak256(abi.encode(bountyId, data[i].recipient, data[i].bid, data[i].revShare))
-                .toEthSignedMessageHash();
+            // Create the typed data hash
+            bytes32 typedDataHash = keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    keccak256(abi.encode(DOMAIN_HASH, NAME_HASH, VERSION_HASH, block.chainid, address(this))),
+                    keccak256(abi.encode(PARAMS_HASH, bountyId, data[i].recipient, data[i].bid, data[i].revShare))
+                )
+            );
 
-            if (data[i].recipient != bidHash.recover(paymentSignatures[i])) {
+            // Verify the signature
+            if (data[i].recipient != ECDSA.recover(typedDataHash, paymentSignatures[i])) {
                 revert InvalidSignature(data[i].recipient);
             }
             unchecked {

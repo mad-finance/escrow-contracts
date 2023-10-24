@@ -10,6 +10,7 @@ import "../src/mocks/MockRouter.sol";
 import "../src/mocks/MockSuperToken.sol";
 import "../src/mocks/MockActionModule.sol";
 import "../src/extensions/LensExtension.sol";
+import "../src/extensions/Constants.sol";
 import "../src/RewardNft.sol";
 
 import "../src/interfaces/ISuperToken.sol";
@@ -29,7 +30,7 @@ interface IHubTest {
     ) external;
 }
 
-contract BountiesTest is Test, LensHelper {
+contract BountiesTest is Test, LensHelper, Constants {
     using ECDSA for bytes32;
 
     uint256 polygonFork;
@@ -622,10 +623,16 @@ contract BountiesTest is Test, LensHelper {
         bytes[] memory paymentSignatures = new bytes[](recipients.length);
         uint256 i;
         while (i < recipients.length) {
-            bytes32 digest =
-                keccak256(abi.encode(newBountyId, recipients[i], bids[i], revShares[i])).toEthSignedMessageHash();
+            // Create the typed data hash
+            bytes32 typedDataHash = keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    keccak256(abi.encode(DOMAIN_HASH, NAME_HASH, VERSION_HASH, block.chainid, address(bounties))),
+                    keccak256(abi.encode(PARAMS_HASH, newBountyId, recipients[i], bids[i], revShares[i]))
+                )
+            );
             uint256 privateKey = i == 0 ? bidderPrivateKey : bidderPrivateKey2;
-            (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
+            (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, typedDataHash);
             paymentSignatures[i] = abi.encodePacked(r, s, v);
             unchecked {
                 ++i;
