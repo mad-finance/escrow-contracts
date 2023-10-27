@@ -23,7 +23,7 @@ import "madfi-protocol/interfaces/IMadSBT.sol";
 import "./extensions/LensExtension.sol";
 import "./extensions/Constants.sol";
 import "./interfaces/IRewardNft.sol";
-import "./libraries/RevShare.sol";
+import {RevShare} from "madfi-protocol/libraries/RevShare.sol";
 
 contract Bounties is Ownable, LensExtension, Constants {
     using ECDSA for bytes32;

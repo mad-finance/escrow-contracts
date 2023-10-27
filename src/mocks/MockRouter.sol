@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.10;
 
-import {ISwapRouter} from "../interfaces/IUniswap.sol";
+import {ISwapRouter} from "madfi-protocol/interfaces/IUniswap.sol";
 import "./MockToken.sol";
 
 contract MockRouter is ISwapRouter {

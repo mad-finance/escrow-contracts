@@ -35,44 +35,8 @@ contract LensHelper is Test {
         pure
         returns (Types.EIP712Signature memory)
     {
-        return _getSigStruct(vm.addr(pKey), pKey, digest, deadline);
-    }
-
-    function _getSigStruct(address signer, uint256 pKey, bytes32 digest, uint256 deadline)
-        internal
-        pure
-        returns (Types.EIP712Signature memory)
-    {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pKey, digest);
-        return Types.EIP712Signature(signer, v, r, s, deadline);
-    }
-
-    function _getPostTypedDataHash(
-        uint256 profileId,
-        string memory contentURI,
-        address[] memory actionModules,
-        bytes[] memory actionModulesInitDatas,
-        address referenceModule,
-        bytes memory referenceModuleInitData,
-        address signer,
-        uint256 nonce,
-        uint256 deadline
-    ) internal view returns (bytes32) {
-        bytes32 structHash = keccak256(
-            abi.encode(
-                Typehash.POST,
-                profileId,
-                _encodeUsingEip712Rules(contentURI),
-                _encodeUsingEip712Rules(actionModules),
-                _encodeUsingEip712Rules(actionModulesInitDatas),
-                referenceModule,
-                _encodeUsingEip712Rules(referenceModuleInitData),
-                signer,
-                nonce,
-                deadline
-            )
-        );
-        return _calculateDigest(structHash);
+        return Types.EIP712Signature(vm.addr(pKey), v, r, s, deadline);
     }
 
     function _getPostTypedDataHash(Types.PostParams memory postParams, address signer, uint256 nonce, uint256 deadline)
@@ -80,17 +44,22 @@ contract LensHelper is Test {
         view
         returns (bytes32)
     {
-        return _getPostTypedDataHash({
-            profileId: postParams.profileId,
-            contentURI: postParams.contentURI,
-            actionModules: postParams.actionModules,
-            actionModulesInitDatas: postParams.actionModulesInitDatas,
-            referenceModule: postParams.referenceModule,
-            referenceModuleInitData: postParams.referenceModuleInitData,
-            signer: signer,
-            nonce: nonce,
-            deadline: deadline
-        });
+        return _calculateDigest(
+            keccak256(
+                abi.encode(
+                    Typehash.POST,
+                    postParams.profileId,
+                    _encodeUsingEip712Rules(postParams.contentURI),
+                    _encodeUsingEip712Rules(postParams.actionModules),
+                    _encodeUsingEip712Rules(postParams.actionModulesInitDatas),
+                    postParams.referenceModule,
+                    _encodeUsingEip712Rules(postParams.referenceModuleInitData),
+                    signer,
+                    nonce,
+                    deadline
+                )
+            )
+        );
     }
 
     function _calculateDigest(bytes32 structHash) internal view returns (bytes32) {

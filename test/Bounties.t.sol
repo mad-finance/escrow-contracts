@@ -13,7 +13,7 @@ import "../src/extensions/LensExtension.sol";
 import "../src/extensions/Constants.sol";
 import "../src/RewardNft.sol";
 
-import "../src/interfaces/ISuperToken.sol";
+import "madfi-protocol/interfaces/ISuperToken.sol";
 
 import "./helpers/LensHelper.sol";
 
@@ -547,7 +547,7 @@ contract BountiesTest is Test, LensHelper, Constants {
     function testSettleRankedBountyPostToLens() public {
         {
             address[] memory executors = new address[](1);
-            executors[0] = defaultSender;
+            executors[0] = address(bounties);
 
             bool[] memory approvals = new bool[](1);
             approvals[0] = true;
@@ -583,8 +583,8 @@ contract BountiesTest is Test, LensHelper, Constants {
         posts[0] = Types.PostParams({
             profileId: bidderProfileId,
             contentURI: "ipfs://123",
-            actionModules: _toAddressArray(address(mockActionModule)),
-            actionModulesInitDatas: _toBytesArray(abi.encode(true)),
+            actionModules: new address[](0),
+            actionModulesInitDatas: new bytes[](0),
             referenceModule: address(0),
             referenceModuleInitData: ""
         });
