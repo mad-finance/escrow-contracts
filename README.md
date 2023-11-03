@@ -57,6 +57,8 @@ forge script script/DeployBounties.s.sol:DeployBounties --rpc-url mumbai --broad
 forge script script/WithdrawFees.s.sol:WithdrawFees --rpc-url mumbai --broadcast -vvvv
 ```
 
+in ILensProtocol its recommended to change the Types import to `import {Types} from '../../contracts/libraries/constants/Types.sol';` before deploying because otherwise verification messes up.
+
 ## Bounties in depth
 
 `rankedSettle` is the default way to pay out from a bounty.
@@ -87,8 +89,8 @@ forge script script/WithdrawFees.s.sol:WithdrawFees --rpc-url mumbai --broadcast
 
 ### Mumbai
 
-RevShare: 0x1aA57C5eC6Ec6781a00E2b0d97D3BB2E354805F6
+RevShare: 0x72FB6E048484B44178d9274b2Ab5668c5719E1d7
 
-Bounties: 0x807fF05A7B20a247178ba241A2e6676592de0cCB
+Bounties: 0x26d6ecD1dFF1cE392e609747c21D92AFde9Fd24C
 
-RewardNft: 0xc9422A92190bE4F39aE48a5fE321804B3EAd1A81
+RewardNft: 0x3D381B1501cf67D06164C60d75fa2B5b42D1F971
