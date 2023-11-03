@@ -69,6 +69,8 @@ contract Bounties is Ownable, LensExtension, Constants {
 
     address swapRouter;
 
+    bytes32 DOMAIN_HASH;
+
     // MADSBT POINTS
     IMadSBT madSBT;
     uint256 collectionId;
@@ -90,7 +92,7 @@ contract Bounties is Ownable, LensExtension, Constants {
     // ERRORS
     error NotArbiter(address sender);
     error InvalidBidAmount(uint256 amount);
-    error InvalidBids(uint256 amount);
+    error InvalidBidTotal(uint256 amount);
     error NFTBounty(uint256 bountyId);
     error InvalidSignature(address bidder);
     error OnlyPublicationAction();
@@ -108,6 +110,8 @@ contract Bounties is Ownable, LensExtension, Constants {
         protocolFee = _protocolFee;
         count = _startId;
         swapRouter = _swapRouter;
+
+        DOMAIN_HASH = keccak256(abi.encode(DOMAIN_TYPE_HASH, NAME_HASH, VERSION_HASH, block.chainid, address(this)));
     }
 
     // PUBLIC FUNCTIONS
@@ -203,16 +207,15 @@ contract Bounties is Ownable, LensExtension, Constants {
         if (bounty.collectionId == 0) {
             revert NFTBounty(bountyId);
         }
-        uint256 length = recipients.length;
         uint256 i;
-        while (i < length) {
+        while (i < recipients.length) {
             rewardNft.mint(recipients[i], bounty.collectionId, 1, "");
             unchecked {
                 ++i;
             }
         }
         postWithSigBatch(postParams, signatures);
-        emit BountyNfts(bountyId, length);
+        emit BountyNfts(bountyId, recipients.length);
     }
 
     /**
@@ -267,9 +270,8 @@ contract Bounties is Ownable, LensExtension, Constants {
 
     /// @notice withdraws all accumulated fees
     function withdrawFees(address[] calldata _tokens) external onlyOwner {
-        uint256 length = _tokens.length;
         uint256 i;
-        while (i < length) {
+        while (i < _tokens.length) {
             uint256 contractBal = feesEarned[_tokens[i]];
             feesEarned[_tokens[i]] = 0;
             IERC20(_tokens[i]).transfer(owner(), contractBal);
@@ -323,14 +325,13 @@ contract Bounties is Ownable, LensExtension, Constants {
         internal
         view
     {
-        uint256 length = data.length;
         uint256 i = 0;
-        while (i < length) {
+        while (i < data.length) {
             // Create the typed data hash
             bytes32 typedDataHash = keccak256(
                 abi.encodePacked(
                     "\x19\x01",
-                    keccak256(abi.encode(DOMAIN_HASH, NAME_HASH, VERSION_HASH, block.chainid, address(this))),
+                    DOMAIN_HASH,
                     keccak256(abi.encode(PARAMS_HASH, bountyId, data[i].recipient, data[i].bid, data[i].revShare))
                 )
             );
@@ -361,9 +362,8 @@ contract Bounties is Ownable, LensExtension, Constants {
         }
 
         uint256 bidTotal;
-        uint256 length = data.length;
         uint256 i;
-        while (i < length) {
+        while (i < data.length) {
             bidTotal += data[i].bid;
             unchecked {
                 ++i;
@@ -373,7 +373,7 @@ contract Bounties is Ownable, LensExtension, Constants {
         uint256 newFees = calcFee(bidTotal);
         uint256 total = newFees + bidTotal;
         if (total > bounty.amount) {
-            revert InvalidBids(total);
+            revert InvalidBidTotal(total);
         }
 
         bounties[bountyId].amount -= total;
@@ -381,7 +381,7 @@ contract Bounties is Ownable, LensExtension, Constants {
 
         IERC20 token = IERC20(bounty.token);
         i = 0;
-        while (i < length) {
+        while (i < data.length) {
             _bidPayment(token, data[i], fee);
             madSBT.handleRewardsUpdate(data[i].recipient, collectionId, BID_ACCEPT_REWARD_ENUM);
 
@@ -408,7 +408,7 @@ contract Bounties is Ownable, LensExtension, Constants {
         uint256 newFees = calcFee(bidTotal);
         uint256 total = newFees + bidTotal;
         if (total > bounty.amount) {
-            revert InvalidBids(total);
+            revert InvalidBidTotal(total);
         }
 
         bounties[bountyId].amount -= total;

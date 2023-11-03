@@ -39,7 +39,7 @@ contract LensHelper is Test {
         return Types.EIP712Signature(vm.addr(pKey), v, r, s, deadline);
     }
 
-    function _getPostTypedDataHash(Types.PostParams memory postParams, address signer, uint256 nonce, uint256 deadline)
+    function _getPostTypedDataHash(Types.PostParams memory postParams, uint256 nonce, uint256 deadline)
         internal
         view
         returns (bytes32)
@@ -54,7 +54,6 @@ contract LensHelper is Test {
                     _encodeUsingEip712Rules(postParams.actionModulesInitDatas),
                     postParams.referenceModule,
                     _encodeUsingEip712Rules(postParams.referenceModuleInitData),
-                    signer,
                     nonce,
                     deadline
                 )

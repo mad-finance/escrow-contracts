@@ -13,8 +13,8 @@ contract DeployBounties is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         address lensHub = block.chainid == 137
-            ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // TODO: polygon
-            : 0xC1E77eE73403B8a7478884915aA599932A677870; // mumbai
+            ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // polygon
+            : 0x60Ae865ee4C725cd04353b5AAb364553f56ceF82; // mumbai
 
         uint256 protocolFee = 10_00;
 

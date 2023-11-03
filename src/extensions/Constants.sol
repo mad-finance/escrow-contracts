@@ -7,7 +7,7 @@ contract Constants {
 
     uint8 public immutable BID_ACCEPT_REWARD_ENUM = 4;
 
-    bytes32 immutable DOMAIN_HASH =
+    bytes32 immutable DOMAIN_TYPE_HASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     bytes32 immutable NAME_HASH = keccak256(bytes("MadFi Bounties"));

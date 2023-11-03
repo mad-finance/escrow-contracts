@@ -592,7 +592,7 @@ contract BountiesTest is Test, LensHelper, Constants {
         Types.EIP712Signature[] memory postSignatures = new Types.EIP712Signature[](1);
         postSignatures[0] = _getSigStruct({
             pKey: bidderPrivateKey,
-            digest: _getPostTypedDataHash(posts[0], bidderAddress, nonce, deadline),
+            digest: _getPostTypedDataHash(posts[0], nonce, deadline),
             deadline: deadline
         });
 
@@ -627,7 +627,7 @@ contract BountiesTest is Test, LensHelper, Constants {
             bytes32 typedDataHash = keccak256(
                 abi.encodePacked(
                     "\x19\x01",
-                    keccak256(abi.encode(DOMAIN_HASH, NAME_HASH, VERSION_HASH, block.chainid, address(bounties))),
+                    keccak256(abi.encode(DOMAIN_TYPE_HASH, NAME_HASH, VERSION_HASH, block.chainid, address(bounties))),
                     keccak256(abi.encode(PARAMS_HASH, newBountyId, recipients[i], bids[i], revShares[i]))
                 )
             );
