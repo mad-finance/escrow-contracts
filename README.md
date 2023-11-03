@@ -57,7 +57,12 @@ forge script script/DeployBounties.s.sol:DeployBounties --rpc-url mumbai --broad
 forge script script/WithdrawFees.s.sol:WithdrawFees --rpc-url mumbai --broadcast -vvvv
 ```
 
-in ILensProtocol its recommended to change the Types import to `import {Types} from '../../contracts/libraries/constants/Types.sol';` before deploying because otherwise verification messes up.
+## Deployment
+
+1. Be sure to set correct last bounty id for your chain id
+2. In ILensProtocol change the Types import to `import {Types} from '../../contracts/libraries/constants/Types.sol';` before deploying because otherwise polygonscan verification messes up.
+3. Run the deploy script
+4. Set contract as verified on MadSBT contract so rewards can be distributed
 
 ## Bounties in depth
 
