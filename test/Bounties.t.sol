@@ -19,9 +19,8 @@ import "./helpers/LensHelper.sol";
 
 import "openzeppelin/utils/cryptography/ECDSA.sol";
 import "openzeppelin/token/ERC20/ERC20.sol";
-// import "lens/../test/base/BaseTest.t.sol";
 
-interface IHubTest {
+interface ILensHubTest {
     function nonces(address signer) external returns (uint256);
     function changeDelegatedExecutorsConfig(
         uint256 delegatorProfileId,
@@ -545,17 +544,6 @@ contract BountiesTest is Test, LensHelper, Constants {
     }
 
     function testSettleRankedBountyPostToLens() public {
-        {
-            address[] memory executors = new address[](1);
-            executors[0] = address(bounties);
-
-            bool[] memory approvals = new bool[](1);
-            approvals[0] = true;
-
-            vm.prank(bidderAddress);
-            IHubTest(lensHub).changeDelegatedExecutorsConfig(bidderProfileId, executors, approvals);
-        }
-
         vm.startPrank(defaultSender);
         uint256 bountyAmount = 100_000_000;
         helperMintApproveTokens(bountyAmount, defaultSender, usdc);
@@ -576,7 +564,7 @@ contract BountiesTest is Test, LensHelper, Constants {
 
         Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
 
-        uint256 nonce = IHubTest(lensHub).nonces(bidderAddress);
+        uint256 nonce = ILensHubTest(lensHub).nonces(bidderAddress);
         uint256 deadline = type(uint256).max;
 
         Types.PostParams[] memory posts = new Types.PostParams[](1);
