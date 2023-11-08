@@ -7,13 +7,25 @@ contract Constants {
 
     uint8 public immutable BID_ACCEPT_REWARD_ENUM = 4;
 
-    bytes32 immutable DOMAIN_TYPE_HASH =
-        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+    // EIP-712 type definitions
+    string private constant EIP712_DOMAIN =
+        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)";
+    string private constant RANKED_SETTLE_INPUT_TYPE =
+        "RankedSettleInput(uint256 bountyId,uint256 bid,address recipient,uint256 revShare,Types.PostParams postParams,Types.MirrorParams mirrorParams,FollowParams followParams)";
+    string private constant NFT_SETTLE_INPUT_TYPE =
+        "NftSettleInput(uint256 bountyId,uint256 nonce,address recipient,Types.PostParams postParams,Types.MirrorParams mirrorParams,FollowParams followParams)";
 
-    bytes32 immutable NAME_HASH = keccak256(bytes("MadFi Bounties"));
+    string private constant POST_PARAMS_TYPE =
+        "PostParams(uint256 profileId,string contentURI,address[] actionModules,bytes[] actionModulesInitDatas,address referenceModule,bytes referenceModuleInitData)";
+    string private constant MIRROR_PARAMS_TYPE =
+        "MirrorParams(uint256 profileId,string metadataURI,uint256 pointedProfileId,uint256 pointedPubId,uint256[] referrerProfileIds,uint256[] referrerPubIds,bytes referenceModuleData)";
+    string private constant FOLLOW_PARAMS_TYPE =
+        "FollowParams(bytes[] datas,uint256[] followTokenIds,uint256 followerProfileId,uint256[] idsOfProfilesToFollow)";
 
-    bytes32 immutable VERSION_HASH = keccak256(bytes("1"));
-
-    bytes32 immutable PARAMS_HASH =
-        keccak256("PaymentParams(uint256 bountyId,address recipient,uint256 bid,uint256 revShare)");
+    bytes32 internal constant EIP712_DOMAIN_TYPEHASH = keccak256(abi.encodePacked(EIP712_DOMAIN));
+    bytes32 internal constant RANKED_SETTLE_INPUT_TYPEHASH = keccak256(abi.encodePacked(RANKED_SETTLE_INPUT_TYPE));
+    bytes32 internal constant NFT_SETTLE_INPUT_TYPEHASH = keccak256(abi.encodePacked(NFT_SETTLE_INPUT_TYPE));
+    bytes32 internal constant POST_PARAMS_TYPEHASH = keccak256(abi.encodePacked(POST_PARAMS_TYPE));
+    bytes32 internal constant MIRROR_PARAMS_TYPEHASH = keccak256(abi.encodePacked(MIRROR_PARAMS_TYPE));
+    bytes32 internal constant FOLLOW_PARAMS_TYPEHASH = keccak256(abi.encodePacked(FOLLOW_PARAMS_TYPE));
 }
