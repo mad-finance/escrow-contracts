@@ -241,9 +241,11 @@ contract Bounties is Ownable, Constants {
         }
         _verifySignatures(bountyId, input);
         for (uint256 i = 0; i < input.length;) {
-            rewardNft.mint(input[i].recipient, bounty.collectionId, 1, "");
-            _doLens(input[i].postParams, input[i].mirrorParams, input[i].followParams);
-            nftSettleNonces[bountyId][input[i].recipient]++;
+            if (nftSettleNonces[bountyId][input[i].recipient] == input[i].nonce) {
+                rewardNft.mint(input[i].recipient, bounty.collectionId, 1, "");
+                _doLens(input[i].postParams, input[i].mirrorParams, input[i].followParams);
+                nftSettleNonces[bountyId][input[i].recipient]++;
+            }
             unchecked {
                 ++i;
             }
