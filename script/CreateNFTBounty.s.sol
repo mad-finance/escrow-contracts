@@ -14,7 +14,7 @@ contract CreateNFTBounty is Script {
 
         address bountiesAddress = block.chainid == 137
             ? 0x385B33C3127d5AF5F74fB4193a8dFd86D9a4A166
-            : 0x26d6ecD1dFF1cE392e609747c21D92AFde9Fd24C;
+            : 0x62ABd2780954f2451dcb4DB9d7E599FB527f104B;
 
         Bounties bounties = Bounties(payable(bountiesAddress));
         bounties.depositNft("ipfs://bafkreibzte5iaclr7k6qwut5acq6gouhwcvctfjvxan7zyfwg7ffgz6dce");
