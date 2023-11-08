@@ -104,8 +104,8 @@ contract TestHelper is Test, Constants {
         Bounties.FollowParams memory follow = Bounties.FollowParams({
             followerProfileId: bidderProfileId,
             idsOfProfilesToFollow: idsOfProfilesToFollow,
-            followTokenIds: new uint256[](0),
-            datas: new bytes[](0)
+            followTokenIds: new uint256[](1),
+            datas: new bytes[](1)
         });
 
         Bounties.RankedSettleInput[] memory input = new Bounties.RankedSettleInput[](1);
@@ -155,8 +155,8 @@ contract TestHelper is Test, Constants {
         Bounties.FollowParams memory follow1 = Bounties.FollowParams({
             followerProfileId: bidderProfileId,
             idsOfProfilesToFollow: idsOfProfilesToFollow1,
-            followTokenIds: new uint256[](0),
-            datas: new bytes[](0)
+            followTokenIds: new uint256[](1),
+            datas: new bytes[](1)
         });
 
         input[0] = Bounties.RankedSettleInput({
@@ -194,8 +194,8 @@ contract TestHelper is Test, Constants {
         Bounties.FollowParams memory follow2 = Bounties.FollowParams({
             followerProfileId: bidderProfileId2,
             idsOfProfilesToFollow: idsOfProfilesToFollow2,
-            followTokenIds: new uint256[](0),
-            datas: new bytes[](0)
+            followTokenIds: new uint256[](1),
+            datas: new bytes[](1)
         });
         input[1] = Bounties.RankedSettleInput({
             bid: bidAmount2,
@@ -247,8 +247,8 @@ contract TestHelper is Test, Constants {
         Bounties.FollowParams memory follow1 = Bounties.FollowParams({
             followerProfileId: bidderProfileId,
             idsOfProfilesToFollow: idsOfProfilesToFollow1,
-            followTokenIds: new uint256[](0),
-            datas: new bytes[](0)
+            followTokenIds: new uint256[](1),
+            datas: new bytes[](1)
         });
 
         input[0] = Bounties.NftSettleInput({
@@ -285,8 +285,8 @@ contract TestHelper is Test, Constants {
         Bounties.FollowParams memory follow2 = Bounties.FollowParams({
             followerProfileId: bidderProfileId2,
             idsOfProfilesToFollow: idsOfProfilesToFollow2,
-            followTokenIds: new uint256[](0),
-            datas: new bytes[](0)
+            followTokenIds: new uint256[](1),
+            datas: new bytes[](1)
         });
         input[1] = Bounties.NftSettleInput({
             nonce: bounties.nftSettleNonces(newBountyId, bidderAddress2),
