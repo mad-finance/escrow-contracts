@@ -1,4 +1,4 @@
-# Briefs/Bounties Smart Contracts
+# MadFi Bounties Smart Contracts
 
 Smart contracts for escrowing funds for bounties and issuing funds/rewards.
 
@@ -15,11 +15,11 @@ Manages Bounties.
 
 Functions:
 
-- deposit: Specify amount and address of token and time period of bounty. Transfers tokens into escrow contract. Returns a id for the bounty.
+- deposit: Specify amount and address of token. Transfers tokens into contract. Returns a id for the bounty.
 
 - depositNft: Specify token uri and create a bounty with an nft as reward instead of cash
 
-- rankedSettle: settles the bounty by splitting between all recipients and posts to Lens. There are different versions for posting, mirroring, commenting, following and collecting.
+- rankedSettle: settles the bounty by distributing funds to each recipient that has a verified signature. Then posts to Lens and mirrors and/or follows if specified.
 
 - nftSettle: settle an nft bounty
 
@@ -69,25 +69,32 @@ forge script script/WithdrawFees.s.sol:WithdrawFees --rpc-url mumbai --broadcast
 `rankedSettle` is the default way to pay out from a bounty.
 
 ```
-    struct RankedSettleInput {
-        uint256 bountyId;
-        address[] recipients;
-        uint256[] bids;
-        uint256[] revShares;
-        bytes[] paymentSignatures;
-        Types.PostParams[] postParams;
-        Types.EIP712Signature[] signatures;
-        uint24 fee;
-    }
+function rankedSettle(uint256 bountyId, RankedSettleInput[] calldata input, uint24 fee) external
+
+struct RankedSettleInput {
+    uint256 bid;
+    address recipient;
+    uint256 revShare;
+    bytes signature;
+    Types.PostParams postParams;
+    Types.MirrorParams mirrorParams;
+    FollowParams followParams;
+}
 ```
 
-- bountyId: the id of the bounty
-- recipients: the addresses of the recipients
-- bids: the amount of the bounty token to be paid to each recipient
-- revShares: the percent of the recipient's split to be distributed through their MaadSBT badge. If they don't have this param will do nothing
-- paymentSignatures: signatures from the recipients to prove that the correct bid amounts and rev share splits are being included
+`input` struct
+
+- bid: the amount of the bounty token to be the recipient
+- recipient: the address of the recipients
+- revShare: the percent of the recipient's split to be distributed through their MaadSBT badge. If they don't have this param will do nothing
+- signature: signature of the entire struct (except signature) signed by the recipient
 - postParams: the params for the post to be made to Lens
-- signatures: signatures from the recipients to verify the lens posts are correct
+- mirrorParams: the params for the mirror to be made to Lens (if any)
+- followParams: the params for the follow to be made to Lens (if any)
+
+Other Params
+
+- bountyId: the id of the bounty
 - fee: if they include a rev share and the bounty token is not the same as the underlying asset for their mad sbt badge reward super token it will need to be swapped. this fee is the fee for the uniswap pool to swap through. It will be 500, 3000 or 10000 (0.05%, .3% or 1%)
 
 ## Deployments
@@ -99,3 +106,11 @@ RevShare: 0x72FB6E048484B44178d9274b2Ab5668c5719E1d7
 Bounties: 0x26d6ecD1dFF1cE392e609747c21D92AFde9Fd24C
 
 RewardNft: 0x3D381B1501cf67D06164C60d75fa2B5b42D1F971
+
+### Polygon
+
+RevShare:
+
+Bounties:
+
+RewardNft:

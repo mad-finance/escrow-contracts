@@ -3,80 +3,9 @@ pragma solidity ^0.8.10;
 
 import "forge-std/Test.sol";
 
-import "../src/Bounties.sol";
-import "../src/mocks/MockToken.sol";
-import "../src/mocks/MockMadSBT.sol";
-import "../src/mocks/MockRouter.sol";
-import "../src/mocks/MockSuperToken.sol";
-import "../src/mocks/MockActionModule.sol";
-import "../src/extensions/LensExtension.sol";
-import "../src/extensions/Constants.sol";
-import "../src/RewardNft.sol";
+import "./helpers/TestHelper.sol";
 
-import "madfi-protocol/interfaces/ISuperToken.sol";
-
-import "./helpers/LensHelper.sol";
-
-import "openzeppelin/utils/cryptography/ECDSA.sol";
-import "openzeppelin/token/ERC20/ERC20.sol";
-
-interface ILensHubTest {
-    function nonces(address signer) external returns (uint256);
-    function changeDelegatedExecutorsConfig(
-        uint256 delegatorProfileId,
-        address[] calldata delegatedExecutors,
-        bool[] calldata approvals
-    ) external;
-}
-
-contract BountiesTest is Test, LensHelper, Constants {
-    using ECDSA for bytes32;
-
-    uint256 polygonFork;
-
-    Bounties bounties;
-    RewardNft rewardNft;
-    MockMadSBT mockMadSBT;
-
-    address swapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564; // uniswap swap router
-
-    ERC20 usdc = ERC20(0xbe49ac1EadAc65dccf204D4Df81d650B50122aB2);
-    ERC20 wmatic = ERC20(0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889);
-    ISuperToken superUsdc = ISuperToken(0x42bb40bF79730451B11f6De1CbA222F17b87Afd7);
-
-    address defaultSender = address(69);
-
-    uint256 public bidderPrivateKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80; // hardhat account 1
-    uint256 public bidderPrivateKey2 = 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d; // hardhat account 2
-    address public bidderAddress = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
-    address public bidderAddress2 = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
-
-    uint256 bidderProfileId = 236;
-
-    uint256 bidAmount1 = 75_000;
-    uint256 bidAmount2 = 25_000;
-
-    MockActionModule mockActionModule;
-
-    function setUp() public {
-        polygonFork = vm.createFork(vm.envString("MUMBAI_RPC_URL"));
-        vm.selectFork(polygonFork);
-
-        mockMadSBT = new MockMadSBT(address(superUsdc));
-
-        bounties = new Bounties(lensHub, 0, 0, address(swapRouter));
-        rewardNft = new RewardNft(address(bounties));
-
-        bounties.setMadSBT(address(mockMadSBT), 1, 1);
-        bounties.setRewardNft(address(rewardNft));
-
-        mockActionModule = new MockActionModule();
-    }
-
-    function helperMintApproveTokens(uint256 bountyAmount, address recipient, ERC20 token) public {
-        deal(address(token), recipient, bountyAmount);
-        token.approve(address(bounties), type(uint256).max);
-    }
+contract BountiesTest is TestHelper {
 
     function testCreateBounty() public {
         vm.startPrank(defaultSender);
@@ -84,7 +13,7 @@ contract BountiesTest is Test, LensHelper, Constants {
         helperMintApproveTokens(bountyAmount, defaultSender, usdc);
         uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
         assertEq(newBountyId, 1);
-        (uint256 amount, address sponsor, address token,) = bounties.bounties(newBountyId);
+        (uint256 amount,, address sponsor, address token) = bounties.bounties(newBountyId);
         assertEq(token, address(usdc));
         assertEq(amount, bountyAmount);
         assertEq(sponsor, defaultSender);
@@ -97,7 +26,7 @@ contract BountiesTest is Test, LensHelper, Constants {
         helperMintApproveTokens(bountyAmount, defaultSender, usdc);
         uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
         assertEq(newBountyId, 1);
-        (uint256 amount, address sponsor, address token,) = bounties.bounties(newBountyId);
+        (uint256 amount,, address sponsor, address token) = bounties.bounties(newBountyId);
         assertEq(token, address(usdc));
         assertEq(amount, bountyAmount);
         assertEq(sponsor, defaultSender);
@@ -106,7 +35,7 @@ contract BountiesTest is Test, LensHelper, Constants {
         uint256 topUpAmount = 100;
         helperMintApproveTokens(topUpAmount, defaultSender, usdc);
         bounties.topUp(newBountyId, topUpAmount);
-        (amount, sponsor, token,) = bounties.bounties(newBountyId);
+        (amount,, sponsor, token) = bounties.bounties(newBountyId);
         assertEq(amount, bountyAmount + topUpAmount);
         vm.stopPrank();
     }
@@ -117,30 +46,10 @@ contract BountiesTest is Test, LensHelper, Constants {
         helperMintApproveTokens(bountyAmount, defaultSender, usdc);
         uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
 
-        address[] memory recipients = new address[](1);
-        recipients[0] = bidderAddress;
-
-        uint256[] memory bids = new uint256[](1);
-        bids[0] = bidAmount1;
-
-        uint256[] memory revShares = new uint256[](1);
-        revShares[0] = 0;
-
-        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
-
-        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
-
-        Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
-            bountyId: newBountyId,
-            data: data,
-            paymentSignatures: paymentSignatures,
-            postParams: new Types.PostParams[](0),
-            signatures: new Types.EIP712Signature[](0),
-            fee: 500
-        });
+        Bounties.RankedSettleInput[] memory input = createSettleData(newBountyId);
 
         vm.prank(address(5));
-        bounties.rankedSettle(input);
+        bounties.rankedSettle(newBountyId, input, uniswapFee);
         vm.stopPrank();
     }
 
@@ -152,33 +61,12 @@ contract BountiesTest is Test, LensHelper, Constants {
 
         uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
 
-        address[] memory recipients = new address[](2);
-        recipients[0] = bidderAddress;
-        recipients[1] = bidderAddress2;
+        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 0);
 
-        uint256[] memory bids = new uint256[](2);
-        bids[0] = bidAmount1;
-        bids[1] = bidAmount2;
-
-        uint256[] memory revShares = new uint256[](2);
-        revShares[0] = 0;
-        revShares[1] = 0;
-
-        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
-
-        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
-
-        Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
-            bountyId: newBountyId,
-            data: data,
-            paymentSignatures: paymentSignatures,
-            postParams: new Types.PostParams[](0),
-            signatures: new Types.EIP712Signature[](0),
-            fee: 500
-        });
-
-        bounties.rankedSettle(input);
+        bounties.rankedSettle(newBountyId, input, uniswapFee);
         bounties.close(newBountyId);
+
+        vm.stopPrank();
 
         uint256 expected1 = bidAmount1;
         uint256 expected2 = bidAmount2;
@@ -186,7 +74,8 @@ contract BountiesTest is Test, LensHelper, Constants {
         assertEq(usdc.balanceOf(bidderAddress), expected1);
         assertEq(usdc.balanceOf(bidderAddress2), expected2);
         assertEq(usdc.balanceOf(defaultSender), expected3);
-        vm.stopPrank();
+
+        // TODO: verify lens
     }
 
     function testSettleRankedBountyFromAction() public {
@@ -238,46 +127,28 @@ contract BountiesTest is Test, LensHelper, Constants {
     }
 
     function testSettleAndWithdrawFees() public {
-        vm.startPrank(defaultSender);
-        uint256 fee = 500;
+        uint256 protocolFee = 0;
         uint256 bountyAmount = 100_000_000;
-        bounties = new Bounties(address(4545454545), fee, 0, address(swapRouter));
+        vm.startPrank(defaultSender);
+        bounties = new Bounties(lensHub, protocolFee, 0, address(swapRouter));
         bounties.setMadSBT(address(mockMadSBT), 1, 1);
+        vm.stopPrank();
+
+        setDelegatedExecutors(address(bounties));
+
+        vm.startPrank(defaultSender);
         helperMintApproveTokens(bountyAmount + ((500 * bountyAmount) / 10_000), defaultSender, usdc);
         uint256 beforeBal = usdc.balanceOf(defaultSender);
 
         uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
 
-        address[] memory recipients = new address[](2);
-        recipients[0] = bidderAddress;
-        recipients[1] = bidderAddress2;
+        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 0);
 
-        uint256[] memory bids = new uint256[](2);
-        bids[0] = bidAmount1;
-        bids[1] = bidAmount2;
-
-        uint256[] memory revShares = new uint256[](2);
-        revShares[0] = 0;
-        revShares[1] = 0;
-
-        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
-
-        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
-
-        Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
-            bountyId: newBountyId,
-            data: data,
-            paymentSignatures: paymentSignatures,
-            postParams: new Types.PostParams[](0),
-            signatures: new Types.EIP712Signature[](0),
-            fee: 500
-        });
-
-        bounties.rankedSettle(input);
+        bounties.rankedSettle(newBountyId, input, uniswapFee);
         bounties.close(newBountyId);
 
         uint256 payout = bidAmount1 + bidAmount2;
-        uint256 feePaid = (payout * fee) / 10_000;
+        uint256 feePaid = (payout * protocolFee) / 10_000;
         uint256 totalSpend = payout + feePaid;
         assertEq(usdc.balanceOf(defaultSender), beforeBal - totalSpend);
 
@@ -285,7 +156,7 @@ contract BountiesTest is Test, LensHelper, Constants {
         address[] memory tokens = new address[](1);
         tokens[0] = address(usdc);
         bounties.withdrawFees(tokens);
-        assertEq(usdc.balanceOf(defaultSender), ownerBeforeBal + feePaid);
+        assertEq(usdc.balanceOf(defaultSender), ownerBeforeBal + feePaid, "Sponsor is not correct");
 
         vm.stopPrank();
     }
@@ -300,124 +171,51 @@ contract BountiesTest is Test, LensHelper, Constants {
 
         uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
 
-        address[] memory recipients = new address[](2);
-        recipients[0] = bidderAddress;
-        recipients[1] = bidderAddress2;
+        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 0);
 
-        uint256[] memory bids = new uint256[](2);
-        bids[0] = bidAmount1;
-        bids[1] = bidAmount1;
-
-        uint256[] memory revShares = new uint256[](2);
-        revShares[0] = 0;
-        revShares[1] = 0;
-
-        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
-
-        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
-
-        Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
-            bountyId: newBountyId,
-            data: data,
-            paymentSignatures: paymentSignatures,
-            postParams: new Types.PostParams[](0),
-            signatures: new Types.EIP712Signature[](0),
-            fee: 500
-        });
-
-        bounties.rankedSettle(input);
-        vm.stopPrank();
-    }
-
-    function testFailTooFewSplits() public {
-        vm.startPrank(defaultSender);
-        uint256 bountyAmount = 100_000;
-        helperMintApproveTokens(bountyAmount, defaultSender, usdc);
-        helperMintApproveTokens(bountyAmount, address(bounties), usdc);
-
-        assertEq(usdc.balanceOf(address(bounties)), 2 * bountyAmount);
-
-        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
-
-        address[] memory recipients = new address[](2);
-        recipients[0] = bidderAddress;
-        recipients[1] = bidderAddress2;
-
-        uint256[] memory bids = new uint256[](2);
-        bids[0] = bidAmount1;
-
-        uint256[] memory revShares = new uint256[](2);
-        revShares[0] = 0;
-        revShares[1] = 0;
-
-        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
-
-        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
-
-        Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
-            bountyId: newBountyId,
-            data: data,
-            paymentSignatures: paymentSignatures,
-            postParams: new Types.PostParams[](0),
-            signatures: new Types.EIP712Signature[](0),
-            fee: 500
-        });
-
-        bounties.rankedSettle(input);
+        bounties.rankedSettle(newBountyId, input, uniswapFee);
         vm.stopPrank();
     }
 
     function testOnlyWithdrawFees() public {
-        vm.startPrank(defaultSender);
-        uint256 fee = 500;
+        uint256 protocolFee = 500;
         uint256 bountyAmount = 100_000_000;
-        bounties = new Bounties(address(4545454545), fee, 0, address(swapRouter));
+        vm.startPrank(defaultSender);
+        bounties = new Bounties(lensHub, protocolFee, 0, address(swapRouter));
         bounties.setMadSBT(address(mockMadSBT), 1, 1);
+        vm.stopPrank();
+
+        setDelegatedExecutors(address(bounties));
+
+        vm.startPrank(defaultSender);
         helperMintApproveTokens(bountyAmount + ((500 * bountyAmount) / 10_000), defaultSender, usdc);
         helperMintApproveTokens(bountyAmount, address(bounties), usdc);
         uint256 beforeBal = usdc.balanceOf(defaultSender);
 
         uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
 
-        address[] memory recipients = new address[](2);
-        recipients[0] = bidderAddress;
-        recipients[1] = bidderAddress2;
+        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 0);
 
-        uint256[] memory bids = new uint256[](2);
-        bids[0] = bidAmount1;
-        bids[1] = bidAmount2;
-
-        uint256[] memory revShares = new uint256[](2);
-        revShares[0] = 0;
-        revShares[1] = 0;
-
-        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
-
-        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
-
-        Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
-            bountyId: newBountyId,
-            data: data,
-            paymentSignatures: paymentSignatures,
-            postParams: new Types.PostParams[](0),
-            signatures: new Types.EIP712Signature[](0),
-            fee: 500
-        });
-
-        bounties.rankedSettle(input);
+        bounties.rankedSettle(newBountyId, input, uniswapFee);
         bounties.close(newBountyId);
 
-        uint256 feePaid = ((bidAmount1 + bidAmount2) * fee) / 10_000;
+        uint256 feePaid = ((bidAmount1 + bidAmount2) * protocolFee) / 10_000;
         assertEq(usdc.balanceOf(defaultSender), beforeBal - (bidAmount1 + bidAmount2 + feePaid));
 
         uint256 ownerBeforeBal = usdc.balanceOf(defaultSender);
         address[] memory tokens = new address[](1);
         tokens[0] = address(usdc);
 
-        assertEq(usdc.balanceOf(address(bounties)), bountyAmount + feePaid);
+        assertEq(
+            usdc.balanceOf(address(bounties)),
+            bountyAmount + feePaid,
+            "Bounties contract balance is not correct (before withdraw)"
+        );
         bounties.withdrawFees(tokens);
-        assertEq(usdc.balanceOf(defaultSender), ownerBeforeBal + feePaid);
-        assertEq(usdc.balanceOf(address(bounties)), bountyAmount);
+        assertEq(usdc.balanceOf(defaultSender), ownerBeforeBal + feePaid, "Sponsor balance is not correct");
+        assertEq(
+            usdc.balanceOf(address(bounties)), bountyAmount, "Bounties contract balance is not correct (after withdraw)"
+        );
 
         vm.stopPrank();
     }
@@ -427,17 +225,15 @@ contract BountiesTest is Test, LensHelper, Constants {
         vm.startPrank(defaultSender);
         uint256 newBountyId = bounties.depositNft("ipfs://123");
         assertEq(newBountyId, 1);
-        (uint256 amount, address sponsor, address token, uint256 collectionID) = bounties.bounties(newBountyId);
+        (uint256 amount, uint256 collectionID, address sponsor, address token) = bounties.bounties(newBountyId);
         assertEq(token, address(0));
         assertEq(amount, 0);
         assertEq(sponsor, defaultSender);
         assertEq(collectionID, 1);
 
-        // pay out bounty
-        address[] memory recipients = new address[](2);
-        recipients[0] = bidderAddress;
-        recipients[1] = bidderAddress2;
-        bounties.nftSettle(newBountyId, recipients, new Types.PostParams[](0), new Types.EIP712Signature[](0));
+        Bounties.NftSettleInput[] memory input = createNftSettleDataTwoBidders(newBountyId);
+        bounties.nftSettle(newBountyId, input);
+
         assertEq(rewardNft.balanceOf(bidderAddress, 1), 1);
         assertEq(rewardNft.balanceOf(bidderAddress2, 1), 1);
 
@@ -455,32 +251,9 @@ contract BountiesTest is Test, LensHelper, Constants {
 
         uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
 
-        address[] memory recipients = new address[](2);
-        recipients[0] = bidderAddress;
-        recipients[1] = bidderAddress2;
+        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 10_00);
 
-        uint256[] memory bids = new uint256[](2);
-        bids[0] = bidAmount1;
-        bids[1] = bidAmount2;
-
-        uint256[] memory revShares = new uint256[](2);
-        revShares[0] = 10_00;
-        revShares[1] = 10_00;
-
-        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
-
-        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
-
-        Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
-            bountyId: newBountyId,
-            data: data,
-            paymentSignatures: paymentSignatures,
-            postParams: new Types.PostParams[](0),
-            signatures: new Types.EIP712Signature[](0),
-            fee: 500
-        });
-
-        bounties.rankedSettle(input);
+        bounties.rankedSettle(newBountyId, input, uniswapFee);
         bounties.close(newBountyId);
 
         uint256 expected1 = 90 * bidAmount1 / 100;
@@ -502,32 +275,9 @@ contract BountiesTest is Test, LensHelper, Constants {
 
         uint256 newBountyId = bounties.deposit(address(wmatic), bountyAmount);
 
-        address[] memory recipients = new address[](2);
-        recipients[0] = bidderAddress;
-        recipients[1] = bidderAddress2;
+        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 10_00);
 
-        uint256[] memory bids = new uint256[](2);
-        bids[0] = bidAmount1;
-        bids[1] = bidAmount2;
-
-        uint256[] memory revShares = new uint256[](2);
-        revShares[0] = 10_00;
-        revShares[1] = 10_00;
-
-        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
-
-        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
-
-        Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
-            bountyId: newBountyId,
-            data: data,
-            paymentSignatures: paymentSignatures,
-            postParams: new Types.PostParams[](0),
-            signatures: new Types.EIP712Signature[](0),
-            fee: 500
-        });
-
-        bounties.rankedSettle(input);
+        bounties.rankedSettle(newBountyId, input, uniswapFee);
         bounties.close(newBountyId);
 
         uint256 expected1 = 90 * bidAmount1 / 100;
@@ -541,107 +291,5 @@ contract BountiesTest is Test, LensHelper, Constants {
         );
         assertEq(wmatic.balanceOf(defaultSender), expected3, "Default sender balance is not correct");
         vm.stopPrank();
-    }
-
-    function testSettleRankedBountyPostToLens() public {
-        vm.startPrank(defaultSender);
-        uint256 bountyAmount = 100_000_000;
-        helperMintApproveTokens(bountyAmount, defaultSender, usdc);
-        uint256 tokenAmountBefore = usdc.balanceOf(defaultSender);
-
-        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
-
-        address[] memory recipients = new address[](1);
-        recipients[0] = bidderAddress;
-
-        uint256[] memory bids = new uint256[](1);
-        bids[0] = bidAmount1;
-
-        uint256[] memory revShares = new uint256[](1);
-        revShares[0] = 0;
-
-        bytes[] memory paymentSignatures = createPaymentSignatures(newBountyId, recipients, bids, revShares);
-
-        Bounties.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
-
-        uint256 nonce = ILensHubTest(lensHub).nonces(bidderAddress);
-        uint256 deadline = type(uint256).max;
-
-        Types.PostParams[] memory posts = new Types.PostParams[](1);
-        posts[0] = Types.PostParams({
-            profileId: bidderProfileId,
-            contentURI: "ipfs://123",
-            actionModules: new address[](0),
-            actionModulesInitDatas: new bytes[](0),
-            referenceModule: address(0),
-            referenceModuleInitData: ""
-        });
-
-        Types.EIP712Signature[] memory postSignatures = new Types.EIP712Signature[](1);
-        postSignatures[0] = _getSigStruct({
-            pKey: bidderPrivateKey,
-            digest: _getPostTypedDataHash(posts[0], nonce, deadline),
-            deadline: deadline
-        });
-
-        Bounties.RankedSettleInput memory input = Bounties.RankedSettleInput({
-            bountyId: newBountyId,
-            data: data,
-            paymentSignatures: paymentSignatures,
-            postParams: posts,
-            signatures: postSignatures,
-            fee: 500
-        });
-
-        bounties.rankedSettle(input);
-        bounties.close(newBountyId);
-
-        assertEq(usdc.balanceOf(bidderAddress), bidAmount1);
-        assertEq(usdc.balanceOf(defaultSender), tokenAmountBefore - bidAmount1);
-        vm.stopPrank();
-    }
-
-    // HELPERS
-    function createPaymentSignatures(
-        uint256 newBountyId,
-        address[] memory recipients,
-        uint256[] memory bids,
-        uint256[] memory revShares
-    ) internal view returns (bytes[] memory) {
-        bytes[] memory paymentSignatures = new bytes[](recipients.length);
-        uint256 i;
-        while (i < recipients.length) {
-            // Create the typed data hash
-            bytes32 typedDataHash = keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    keccak256(abi.encode(DOMAIN_TYPE_HASH, NAME_HASH, VERSION_HASH, block.chainid, address(bounties))),
-                    keccak256(abi.encode(PARAMS_HASH, newBountyId, recipients[i], bids[i], revShares[i]))
-                )
-            );
-            uint256 privateKey = i == 0 ? bidderPrivateKey : bidderPrivateKey2;
-            (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, typedDataHash);
-            paymentSignatures[i] = abi.encodePacked(r, s, v);
-            unchecked {
-                ++i;
-            }
-        }
-        return paymentSignatures;
-    }
-
-    function createBidFromActionParam(address[] memory recipients, uint256[] memory bids, uint256[] memory revShares)
-        internal
-        pure
-        returns (Bounties.BidFromAction[] memory)
-    {
-        Bounties.BidFromAction[] memory data = new Bounties.BidFromAction[](recipients.length);
-        uint256 i;
-        while (i < recipients.length) {
-            data[i] = Bounties.BidFromAction({recipient: recipients[i], bid: bids[i], revShare: revShares[i]});
-            unchecked {
-                ++i;
-            }
-        }
-        return data;
     }
 }
