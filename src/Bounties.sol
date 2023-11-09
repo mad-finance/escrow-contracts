@@ -34,8 +34,10 @@ contract Bounties is Ownable, Constants {
     uint256 public protocolFee; // basis points
     mapping(address => uint256) public feesEarned;
 
-    uint256 internal count;
+    uint256 public count;
     mapping(uint256 => Bounty) public bounties;
+
+    mapping(uint256 => mapping(address => uint256)) public nftSettleNonces; // bountyId => recipient => nonces
 
     struct Bounty {
         uint256 amount;
@@ -84,21 +86,16 @@ contract Bounties is Ownable, Constants {
         uint256[] idsOfProfilesToFollow;
     }
 
-    IRewardNft public rewardNft;
-    address public publicationAction;
+    IRewardNft private rewardNft;
+    address private publicationAction;
 
-    mapping(uint256 => mapping(address => uint256)) public nftSettleNonces; // bountyId => recipient => nonces
-
-    address swapRouter;
-
-    ILensProtocol internal lensHub;
-
-    bytes32 private domainSeparator;
+    address private swapRouter;
+    ILensProtocol private lensHub;
 
     /* MADSBT POINTS */
-    IMadSBT madSBT;
-    uint256 collectionId;
-    uint256 profileId;
+    IMadSBT private madSBT;
+    uint256 private collectionId;
+    uint256 private profileId;
 
     /* EVENTS */
     event BountyCreated(uint256 indexed bountyId, Bounty bounty);
@@ -110,7 +107,6 @@ contract Bounties is Ownable, Constants {
     event WithdrawFees(address[] _tokens);
     event SetMadSBT(address _madSBT, uint256 _collectionId, uint256 _profileId);
     event SetRewardNft(address _rewardNft);
-    event SetRevShare(address _revShare);
     event SetPublicationAction(address _publicationAction);
 
     /* ERRORS */
@@ -132,12 +128,6 @@ contract Bounties is Ownable, Constants {
         count = _startId;
         swapRouter = _swapRouter;
         lensHub = ILensProtocol(_lensHub);
-
-        domainSeparator = keccak256(
-            abi.encode(
-                EIP712_DOMAIN_TYPEHASH, keccak256("MadFi Bounties"), keccak256("1"), block.chainid, address(this)
-            )
-        );
     }
 
     /* PUBLIC FUNCTIONS */

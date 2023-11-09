@@ -29,4 +29,8 @@ contract Constants {
     bytes32 internal constant POST_PARAMS_TYPEHASH = keccak256(abi.encodePacked(POST_PARAMS_TYPE));
     bytes32 internal constant MIRROR_PARAMS_TYPEHASH = keccak256(abi.encodePacked(MIRROR_PARAMS_TYPE));
     bytes32 internal constant FOLLOW_PARAMS_TYPEHASH = keccak256(abi.encodePacked(FOLLOW_PARAMS_TYPE));
+
+    bytes32 internal immutable domainSeparator = keccak256(
+        abi.encode(EIP712_DOMAIN_TYPEHASH, keccak256("MadFi Bounties"), keccak256("1"), block.chainid, address(this))
+    );
 }
