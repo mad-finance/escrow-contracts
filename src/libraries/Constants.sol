@@ -3,9 +3,8 @@
 pragma solidity ^0.8.10;
 
 contract Constants {
-    uint8 public immutable BOUNTY_CREATE_REWARD_ENUM = 3; // to give XP on madfi badge
-
-    uint8 public immutable BID_ACCEPT_REWARD_ENUM = 4;
+    uint8 internal constant BOUNTY_CREATE_REWARD_ENUM = 3; // to give XP on madfi badge
+    uint8 internal constant BID_ACCEPT_REWARD_ENUM = 4;
 
     // EIP-712 type definitions
     string private constant EIP712_DOMAIN =

@@ -24,7 +24,7 @@ import "madfi-protocol/interfaces/IMadSBT.sol";
 
 import "lens/interfaces/ILensProtocol.sol";
 
-import "./extensions/Constants.sol";
+import "./libraries/Constants.sol";
 import "./interfaces/IRewardNft.sol";
 import {RevShare} from "madfi-protocol/libraries/RevShare.sol";
 

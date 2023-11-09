@@ -13,7 +13,7 @@ import "madfi-protocol/interfaces/ISuperToken.sol";
 
 import "../../src/Bounties.sol";
 import "../../src/RewardNft.sol";
-import "../../src/extensions/Constants.sol";
+import "../../src/libraries/Constants.sol";
 
 import "../../src/mocks/MockMadSBT.sol";
 import "../../src/mocks/MockRouter.sol";
