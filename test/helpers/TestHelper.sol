@@ -305,6 +305,24 @@ contract TestHelper is Test, Constants {
         return input;
     }
 
+    function createPayOnlySettleDataTwoBidders(uint256 newBountyId, uint256 revShare)
+        internal
+        view
+        returns (Bounties.BidFromAction[] memory, bytes[] memory)
+    {
+        Bounties.BidFromAction[] memory input = new Bounties.BidFromAction[](2);
+
+        // bidder 1
+        input[0] = Bounties.BidFromAction({bid: bidAmount1, recipient: bidderAddress, revShare: revShare});
+
+        // bidder 2
+        input[1] = Bounties.BidFromAction({bid: bidAmount2, recipient: bidderAddress2, revShare: revShare});
+
+        bytes[] memory signatures = createSignatures(newBountyId, input);
+
+        return (input, signatures);
+    }
+
     function createSignatures(uint256 bountyId, Bounties.RankedSettleInput[] memory data)
         internal
         view
@@ -337,6 +355,28 @@ contract TestHelper is Test, Constants {
         while (i < signatures.length) {
             // Create the typed data hash
             bytes32 messageHash = hashNftSettleInput(bountyId, data[i]);
+            bytes32 typedDataHash = toTypedDataHash(messageHash);
+
+            uint256 privateKey = i == 0 ? bidderPrivateKey : bidderPrivateKey2;
+            (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, typedDataHash);
+            signatures[i] = abi.encodePacked(r, s, v);
+            unchecked {
+                ++i;
+            }
+        }
+        return signatures;
+    }
+
+    function createSignatures(uint256 bountyId, Bounties.BidFromAction[] memory data)
+        internal
+        view
+        returns (bytes[] memory)
+    {
+        bytes[] memory signatures = new bytes[](data.length);
+        uint256 i;
+        while (i < signatures.length) {
+            // Create the typed data hash
+            bytes32 messageHash = hashBidFromActionInput(bountyId, data[i]);
             bytes32 typedDataHash = toTypedDataHash(messageHash);
 
             uint256 privateKey = i == 0 ? bidderPrivateKey : bidderPrivateKey2;
@@ -463,6 +503,14 @@ contract TestHelper is Test, Constants {
                 followParamsHash
             )
         );
+    }
+
+    function hashBidFromActionInput(uint256 bountyId, Bounties.BidFromAction memory input)
+        private
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encode(PAY_ONLY_INPUT_TYPEHASH, bountyId, input.bid, input.recipient, input.revShare));
     }
 
     function createBidFromActionParam(address[] memory recipients, uint256[] memory bids, uint256[] memory revShares)

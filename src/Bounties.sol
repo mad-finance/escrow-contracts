@@ -216,6 +216,23 @@ contract Bounties is Ownable, Constants {
     }
 
     /**
+     * @notice disperse funds to recipients, no other onchain actions - for twitter posts
+     * @param bountyId bounty to settle
+     * @param bidData BidFromAction struct containing all inputs
+     * @param signatures signatures of recipients
+     * @param fee uniswap v3 fee in case of rev share swap
+     */
+    function rankedSettlePayOnly(
+        uint256 bountyId,
+        BidFromAction[] calldata bidData,
+        bytes[] calldata signatures,
+        uint24 fee
+    ) external {
+        _verifySignatures(bountyId, bidData, signatures);
+        _rankedSettle(bountyId, bidData, fee);
+    }
+
+    /**
      * @notice disperse funds to recipients and posts to Lens
      * @param input RankedSettleInput struct containing all inputs
      */
@@ -390,6 +407,29 @@ contract Bounties is Ownable, Constants {
         }
     }
 
+    /**
+     * @notice This is an internal function that verifies the signatures of the recipients
+     * @param bountyId The ID of the bounty
+     * @param data The array of BidFromAction structs
+     */
+    function _verifySignatures(uint256 bountyId, BidFromAction[] calldata data, bytes[] calldata signatures)
+        internal
+        view
+    {
+        for (uint256 i = 0; i < data.length;) {
+            bytes32 messageHash = hashBidFromActionInput(bountyId, data[i]);
+            bytes32 typedDataHash = toTypedDataHash(messageHash);
+
+            // Verify the signature
+            if (data[i].recipient != ECDSA.recover(typedDataHash, signatures[i])) {
+                revert InvalidSignature(data[i].recipient);
+            }
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     function toTypedDataHash(bytes32 messageHash) private view returns (bytes32) {
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator, messageHash));
     }
@@ -493,6 +533,10 @@ contract Bounties is Ownable, Constants {
         );
     }
 
+    function hashBidFromActionInput(uint256 bountyId, BidFromAction memory input) private pure returns (bytes32) {
+        return keccak256(abi.encode(PAY_ONLY_INPUT_TYPEHASH, bountyId, input.bid, input.recipient, input.revShare));
+    }
+
     /**
      * @dev disperse funds to recipients
      * @param bountyId bounty to settle
@@ -528,9 +572,10 @@ contract Bounties is Ownable, Constants {
 
         IERC20 token = IERC20(bounty.token);
         i = 0;
+        uint256 sponsorCollectionId = madSBT.activeCollection(bounty.sponsor);
         while (i < data.length) {
             _bidPayment(token, data[i].recipient, data[i].bid, data[i].revShare, fee);
-            madSBT.handleRewardsUpdate(data[i].recipient, collectionId, BID_ACCEPT_REWARD_ENUM);
+            awardBadgePoints(sponsorCollectionId, data[i].recipient);
 
             unchecked {
                 ++i;
@@ -565,16 +610,58 @@ contract Bounties is Ownable, Constants {
         uint256 sponsorCollectionId = madSBT.activeCollection(bounty.sponsor);
         for (uint256 i = 0; i < data.length;) {
             _bidPayment(token, data[i].recipient, data[i].bid, data[i].revShare, fee);
-
-            // MADFI BADGE POINTS
-            madSBT.handleRewardsUpdate(data[i].recipient, collectionId, BID_ACCEPT_REWARD_ENUM);
-            // SPONSOR BADGE POINTS
-            if (sponsorCollectionId != 0) {
-                madSBT.handleRewardsUpdate(data[i].recipient, sponsorCollectionId, BID_ACCEPT_REWARD_ENUM);
-            }
+            awardBadgePoints(sponsorCollectionId, data[i].recipient);
 
             unchecked {
                 i++;
+            }
+        }
+
+        emit BountyPayments(bountyId, bidTotal);
+    }
+
+    /**
+     * @dev disperse funds to recipients
+     * @param bountyId bounty to settle
+     * @param data array of data with recipients, amounts, and rev share
+     * @param fee uniswap v3 fee in case of rev share swap
+     */
+    function _rankedSettle(uint256 bountyId, BidFromAction[] calldata data, uint24 fee) internal {
+        Bounty memory bounty = bounties[bountyId];
+        if (bounty.collectionId != 0) {
+            revert NFTBounty(bountyId);
+        }
+        if (_msgSender() != bounty.sponsor) {
+            revert NotArbiter(_msgSender());
+        }
+
+        uint256 bidTotal;
+        uint256 i;
+        while (i < data.length) {
+            bidTotal += data[i].bid;
+            unchecked {
+                ++i;
+            }
+        }
+
+        uint256 newFees = calcFee(bidTotal);
+        uint256 total = newFees + bidTotal;
+        if (total > bounty.amount) {
+            revert InvalidBidTotal(total);
+        }
+
+        bounties[bountyId].amount -= total;
+        feesEarned[bounty.token] += newFees;
+
+        IERC20 token = IERC20(bounty.token);
+        i = 0;
+        uint256 sponsorCollectionId = madSBT.activeCollection(bounty.sponsor);
+        while (i < data.length) {
+            _bidPayment(token, data[i].recipient, data[i].bid, data[i].revShare, fee);
+            awardBadgePoints(sponsorCollectionId, data[i].recipient);
+
+            unchecked {
+                ++i;
             }
         }
 
@@ -604,6 +691,26 @@ contract Bounties is Ownable, Constants {
         token.transfer(recipient, bid - revShareAmount);
     }
 
+    /**
+     * @dev This function awards badge points to a recipient.
+     * @param sponsorCollectionId The ID of the sponsor's collection.
+     * @param recipient The address of the recipient.
+     */
+    function awardBadgePoints(uint256 sponsorCollectionId, address recipient) internal {
+        // MADFI BADGE POINTS
+        madSBT.handleRewardsUpdate(recipient, collectionId, BID_ACCEPT_REWARD_ENUM);
+        // SPONSOR BADGE POINTS
+        if (sponsorCollectionId != 0) {
+            madSBT.handleRewardsUpdate(recipient, sponsorCollectionId, BID_ACCEPT_REWARD_ENUM);
+        }
+    }
+
+    /**
+     * @dev Performs all lens actions for an address
+     * @param post post params data
+     * @param mirror mirror params data
+     * @param follow follow params data
+     */
     function _doLens(Types.PostParams calldata post, Types.MirrorParams calldata mirror, FollowParams calldata follow)
         internal
     {

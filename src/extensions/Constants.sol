@@ -11,9 +11,10 @@ contract Constants {
     string private constant EIP712_DOMAIN =
         "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)";
     string private constant RANKED_SETTLE_INPUT_TYPE =
-        "RankedSettleInput(uint256 bountyId,uint256 bid,address recipient,uint256 revShare,Types.PostParams postParams,Types.MirrorParams mirrorParams,FollowParams followParams)";
+        "RankedSettleInput(uint256 bountyId,uint256 bid,address recipient,uint256 revShare,PostParams postParams,MirrorParams mirrorParams,FollowParams followParams)";
     string private constant NFT_SETTLE_INPUT_TYPE =
-        "NftSettleInput(uint256 bountyId,uint256 nonce,address recipient,Types.PostParams postParams,Types.MirrorParams mirrorParams,FollowParams followParams)";
+        "NftSettleInput(uint256 bountyId,uint256 nonce,address recipient,PostParams postParams,MirrorParams mirrorParams,FollowParams followParams)";
+    string private constant PAY_ONLY_INPUT_TYPE = "Bid(uint256 bountyId,uint256 bid,address recipient,uint256 revShare)";
 
     string private constant POST_PARAMS_TYPE =
         "PostParams(uint256 profileId,string contentURI,address[] actionModules,bytes[] actionModulesInitDatas,address referenceModule,bytes referenceModuleInitData)";
@@ -25,6 +26,7 @@ contract Constants {
     bytes32 internal constant EIP712_DOMAIN_TYPEHASH = keccak256(abi.encodePacked(EIP712_DOMAIN));
     bytes32 internal constant RANKED_SETTLE_INPUT_TYPEHASH = keccak256(abi.encodePacked(RANKED_SETTLE_INPUT_TYPE));
     bytes32 internal constant NFT_SETTLE_INPUT_TYPEHASH = keccak256(abi.encodePacked(NFT_SETTLE_INPUT_TYPE));
+    bytes32 internal constant PAY_ONLY_INPUT_TYPEHASH = keccak256(abi.encodePacked(PAY_ONLY_INPUT_TYPE));
     bytes32 internal constant POST_PARAMS_TYPEHASH = keccak256(abi.encodePacked(POST_PARAMS_TYPE));
     bytes32 internal constant MIRROR_PARAMS_TYPEHASH = keccak256(abi.encodePacked(MIRROR_PARAMS_TYPE));
     bytes32 internal constant FOLLOW_PARAMS_TYPEHASH = keccak256(abi.encodePacked(FOLLOW_PARAMS_TYPE));

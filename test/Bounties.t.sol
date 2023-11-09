@@ -6,7 +6,6 @@ import "forge-std/Test.sol";
 import "./helpers/TestHelper.sol";
 
 contract BountiesTest is TestHelper {
-
     function testCreateBounty() public {
         vm.startPrank(defaultSender);
         uint256 bountyAmount = 123;
@@ -74,8 +73,6 @@ contract BountiesTest is TestHelper {
         assertEq(usdc.balanceOf(bidderAddress), expected1);
         assertEq(usdc.balanceOf(bidderAddress2), expected2);
         assertEq(usdc.balanceOf(defaultSender), expected3);
-
-        // TODO: verify lens
     }
 
     function testSettleRankedBountyFromAction() public {
@@ -124,6 +121,30 @@ contract BountiesTest is TestHelper {
         assertEq(usdc.balanceOf(bidderAddress2), expected2, "Bidder 2 balance is not correct");
         assertEq(usdc.balanceOf(defaultSender), expected3, "Sponsor balance is not correct");
         assertEq(usdc.balanceOf(openAction), 0, "Open Action balance is not correct");
+    }
+
+    function testSettleRankedBountyPayOnly() public {
+        vm.startPrank(defaultSender);
+        uint256 bountyAmount = 100_000_000;
+        helperMintApproveTokens(bountyAmount, defaultSender, usdc);
+        uint256 tokenAmountBefore = usdc.balanceOf(defaultSender);
+
+        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
+
+        (Bounties.BidFromAction[] memory input, bytes[] memory signatures) =
+            createPayOnlySettleDataTwoBidders(newBountyId, 0);
+
+        bounties.rankedSettlePayOnly(newBountyId, input, signatures, uniswapFee);
+        bounties.close(newBountyId);
+
+        vm.stopPrank();
+
+        uint256 expected1 = bidAmount1;
+        uint256 expected2 = bidAmount2;
+        uint256 expected3 = tokenAmountBefore - expected1 - expected2;
+        assertEq(usdc.balanceOf(bidderAddress), expected1);
+        assertEq(usdc.balanceOf(bidderAddress2), expected2);
+        assertEq(usdc.balanceOf(defaultSender), expected3);
     }
 
     function testSettleAndWithdrawFees() public {
