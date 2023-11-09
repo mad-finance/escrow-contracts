@@ -246,12 +246,17 @@ contract Bounties is Ownable, Constants {
         if (bounty.collectionId == 0) {
             revert NFTBounty(bountyId);
         }
+        if (_msgSender() != bounty.sponsor) {
+            revert NotArbiter(_msgSender());
+        }
         _verifySignatures(bountyId, input);
+        uint256 sponsorCollectionId = madSBT.activeCollection(bounty.sponsor);
         for (uint256 i = 0; i < input.length;) {
             if (nftSettleNonces[bountyId][input[i].recipient] == input[i].nonce) {
                 rewardNft.mint(input[i].recipient, bounty.collectionId, 1, "");
                 _doLens(input[i].postParams, input[i].mirrorParams, input[i].followParams);
                 nftSettleNonces[bountyId][input[i].recipient]++;
+                awardBadgePoints(sponsorCollectionId, input[i].recipient);
             }
             unchecked {
                 ++i;
@@ -259,6 +264,31 @@ contract Bounties is Ownable, Constants {
         }
 
         emit BountyNfts(bountyId, input.length);
+    }
+
+    /**
+     * @notice mints nft to recipients
+     * @param bountyId bounty to settle
+     * @param recipients array of recipients
+     */
+    function nftSettle(uint256 bountyId, address[] calldata recipients) external {
+        Bounty memory bounty = bounties[bountyId];
+        if (bounty.collectionId == 0) {
+            revert NFTBounty(bountyId);
+        }
+        if (_msgSender() != bounty.sponsor) {
+            revert NotArbiter(_msgSender());
+        }
+        uint256 sponsorCollectionId = madSBT.activeCollection(bounty.sponsor);
+        for (uint256 i = 0; i < recipients.length;) {
+            rewardNft.mint(recipients[i], bounty.collectionId, 1, "");
+            awardBadgePoints(sponsorCollectionId, recipients[i]);
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit BountyNfts(bountyId, recipients.length);
     }
 
     /**
