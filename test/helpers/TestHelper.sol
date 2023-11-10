@@ -398,46 +398,68 @@ contract TestHelper is Test, Constants {
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator, messageHash));
     }
 
+    function _encodeUsingEip712Rules(bytes[] memory bytesArray) internal pure returns (bytes32) {
+        bytes32[] memory bytesArrayEncodedElements = new bytes32[](bytesArray.length);
+        uint256 i;
+        while (i < bytesArray.length) {
+            // A `bytes` type is encoded as its keccak256 hash.
+            bytesArrayEncodedElements[i] = keccak256(bytesArray[i]);
+            unchecked {
+                ++i;
+            }
+        }
+        // An array is encoded as the keccak256 hash of the concatenation of their encoded elements.
+        return keccak256(abi.encodePacked(bytesArrayEncodedElements));
+    }
+
+    function hashLensInputs(
+        Types.PostParams memory postParams,
+        Types.MirrorParams memory mirrorParams,
+        Bounties.FollowParams memory followParams
+    ) private pure returns (bytes32 postParamsHash, bytes32 mirrorParamsHash, bytes32 followParamsHash) {
+        postParamsHash = keccak256(
+            abi.encode(
+                POST_PARAMS_TYPEHASH,
+                postParams.profileId,
+                keccak256(bytes(postParams.contentURI)),
+                keccak256(abi.encodePacked(postParams.actionModules)),
+                _encodeUsingEip712Rules(postParams.actionModulesInitDatas),
+                postParams.referenceModule,
+                keccak256(postParams.referenceModuleInitData)
+            )
+        );
+
+        mirrorParamsHash = keccak256(
+            abi.encode(
+                MIRROR_PARAMS_TYPEHASH,
+                mirrorParams.profileId,
+                keccak256(bytes(mirrorParams.metadataURI)),
+                mirrorParams.pointedProfileId,
+                mirrorParams.pointedPubId,
+                keccak256(abi.encodePacked(mirrorParams.referrerProfileIds)),
+                keccak256(abi.encodePacked(mirrorParams.referrerPubIds)),
+                keccak256(mirrorParams.referenceModuleData)
+            )
+        );
+
+        followParamsHash = keccak256(
+            abi.encode(
+                FOLLOW_PARAMS_TYPEHASH,
+                _encodeUsingEip712Rules(followParams.datas),
+                keccak256(abi.encodePacked(followParams.followTokenIds)),
+                followParams.followerProfileId,
+                keccak256(abi.encodePacked(followParams.idsOfProfilesToFollow))
+            )
+        );
+    }
+
     function hashRankedSettleInput(uint256 bountyId, Bounties.RankedSettleInput memory input)
         private
         pure
         returns (bytes32)
     {
-        bytes32 postParamsHash = keccak256(
-            abi.encode(
-                POST_PARAMS_TYPEHASH,
-                input.postParams.profileId,
-                input.postParams.contentURI,
-                input.postParams.actionModules,
-                input.postParams.actionModulesInitDatas,
-                input.postParams.referenceModule,
-                input.postParams.referenceModuleInitData
-            )
-        );
-
-        bytes32 mirrorParamsHash = keccak256(
-            abi.encode(
-                MIRROR_PARAMS_TYPEHASH,
-                input.mirrorParams.profileId,
-                input.mirrorParams.metadataURI,
-                input.mirrorParams.pointedProfileId,
-                input.mirrorParams.pointedPubId,
-                input.mirrorParams.referrerProfileIds,
-                input.mirrorParams.referrerPubIds,
-                input.mirrorParams.referenceModuleData
-            )
-        );
-
-        bytes32 followParamsHash = keccak256(
-            abi.encode(
-                FOLLOW_PARAMS_TYPEHASH,
-                input.followParams.datas,
-                input.followParams.followTokenIds,
-                input.followParams.followerProfileId,
-                input.followParams.idsOfProfilesToFollow
-            )
-        );
-
+        (bytes32 postParamsHash, bytes32 mirrorParamsHash, bytes32 followParamsHash) =
+            hashLensInputs(input.postParams, input.mirrorParams, input.followParams);
         return keccak256(
             abi.encode(
                 RANKED_SETTLE_INPUT_TYPEHASH,
@@ -457,41 +479,8 @@ contract TestHelper is Test, Constants {
         pure
         returns (bytes32)
     {
-        bytes32 postParamsHash = keccak256(
-            abi.encode(
-                POST_PARAMS_TYPEHASH,
-                input.postParams.profileId,
-                input.postParams.contentURI,
-                input.postParams.actionModules,
-                input.postParams.actionModulesInitDatas,
-                input.postParams.referenceModule,
-                input.postParams.referenceModuleInitData
-            )
-        );
-
-        bytes32 mirrorParamsHash = keccak256(
-            abi.encode(
-                MIRROR_PARAMS_TYPEHASH,
-                input.mirrorParams.profileId,
-                input.mirrorParams.metadataURI,
-                input.mirrorParams.pointedProfileId,
-                input.mirrorParams.pointedPubId,
-                input.mirrorParams.referrerProfileIds,
-                input.mirrorParams.referrerPubIds,
-                input.mirrorParams.referenceModuleData
-            )
-        );
-
-        bytes32 followParamsHash = keccak256(
-            abi.encode(
-                FOLLOW_PARAMS_TYPEHASH,
-                input.followParams.datas,
-                input.followParams.followTokenIds,
-                input.followParams.followerProfileId,
-                input.followParams.idsOfProfilesToFollow
-            )
-        );
-
+        (bytes32 postParamsHash, bytes32 mirrorParamsHash, bytes32 followParamsHash) =
+            hashLensInputs(input.postParams, input.mirrorParams, input.followParams);
         return keccak256(
             abi.encode(
                 NFT_SETTLE_INPUT_TYPEHASH,

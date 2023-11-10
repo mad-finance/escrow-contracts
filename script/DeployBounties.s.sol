@@ -18,15 +18,15 @@ contract DeployBounties is Script {
 
         uint256 protocolFee = 10_00;
 
-        // TODO: be sure to set correct last bounty id
-        uint256 lastBountyId = block.chainid == 137 ? 44 : 116;
+        // TODO: be sure to set correct last bounty id before each run
+        uint256 lastBountyId = block.chainid == 137 ? 44 : 117;
 
         address swapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
         Bounties bounties = new Bounties(lensHub, protocolFee, lastBountyId, swapRouter);
 
         address _madSBT = block.chainid == 137
-            ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // TODO?: polygon
+            ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // TODO: polygon?
             : 0x492D70cC758b02E576d3a68D9f560F33472a1Dc9; // mumbai
         uint256 _collectionId = 1;
         uint256 _profileId = block.chainid == 137 ? 8640 : 349;
