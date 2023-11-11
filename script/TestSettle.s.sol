@@ -8,25 +8,22 @@ import "../src/Bounties.sol";
 /**
  * @dev This script is used to test the rankedSettle function/sigs of the Bounties contract on a live testnet
  */
-contract RankedSettle is Script {
+contract TestSettle is Script {
     function setUp() public {}
 
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_SPONSOR");
         vm.startBroadcast(deployerPrivateKey);
 
-        // address bountiesAddress = block.chainid == 137
-        //     ? 0x385B33C3127d5AF5F74fB4193a8dFd86D9a4A166
-        //     : 0xF02FA0e639b3615cc20B89db5Ea722F29EFa08D8;
+        address bountiesAddress = block.chainid == 137
+            ? 0x385B33C3127d5AF5F74fB4193a8dFd86D9a4A166
+            : 0xEB19265435306432667D7653A03A18134C03FE00;
 
-        // Bounties bounties = Bounties(payable(bountiesAddress));
-
-        Bounties bounties =
-        new Bounties(0xC1E77eE73403B8a7478884915aA599932A677870, 10_00, 116, 0xE592427A0AEce92De3Edee1F18E0157C05861564);
+        Bounties bounties = Bounties(payable(bountiesAddress));
 
         Types.PostParams memory post = Types.PostParams({
-            profileId: 0xec,
-            contentURI: "ipfs://bafkreifnli4e4alhtquf77bsf3ebgcdeyovc3gjl5ncusnznwmrk5v3jz4",
+            profileId: 0x0333,
+            contentURI: "ipfs://bafkreiesgeo56qqeylq3qnoixw46flqhhxe2vtnrmifa7zijj6pl2ai23a",
             actionModules: new address[](0),
             actionModulesInitDatas: new bytes[](0),
             referenceModule: 0x0000000000000000000000000000000000000000,
@@ -43,25 +40,33 @@ contract RankedSettle is Script {
             referenceModuleData: ""
         });
 
+        uint256[] memory profileIds = new uint[](2);
+        profileIds[0] = 0x015d;
+        profileIds[1] = 0xec;
+        uint256[] memory followTokenIds = new uint[](2);
+        followTokenIds[0] = 0;
+        followTokenIds[1] = 0;
+        bytes[] memory datas = new bytes[](2);
+        datas[0] = "";
+        datas[1] = "";
         Bounties.FollowParams memory follow = Bounties.FollowParams({
-            followerProfileId: 0,
-            idsOfProfilesToFollow: new uint256[](0),
-            followTokenIds: new uint256[](0),
-            datas: new bytes[](0)
+            followerProfileId: 0x0333,
+            idsOfProfilesToFollow: profileIds,
+            followTokenIds: followTokenIds,
+            datas: datas
         });
 
-        Bounties.RankedSettleInput[] memory input = new Bounties.RankedSettleInput[](1);
-        input[0] = Bounties.RankedSettleInput({
-            bid: 5,
-            recipient: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,
-            revShare: 0,
-            signature: hex"aa0733dc513e3708d2b425ed5a95d7f9ac4488107ce73ed9ca8e87d466af45b64ad1bed79cbe19cd99132c4395a001f750daeea5019de79c49d6857d2e08444d1c",
+        Bounties.NftSettleInput[] memory input = new Bounties.NftSettleInput[](1);
+        input[0] = Bounties.NftSettleInput({
+            nonce: 2,
+            recipient: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8,
+            signature: hex"fb9414e2b599f65a40f6616e3ccead083437c245d9e1219748fea034611b03da02317b0ac01fd0a17421b0cc85dcb737eb44d2e08558bd31b73ec4740fea2ebe1b",
             postParams: post,
             mirrorParams: mirror,
             followParams: follow
         });
 
-        bounties.rankedSettle(117, input, 500);
+        bounties.nftSettle(120, input);
 
         vm.stopBroadcast();
     }

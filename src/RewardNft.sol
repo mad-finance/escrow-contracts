@@ -16,11 +16,11 @@ __/\\\\____________/\\\\_____/\\\\\\\\\_____/\\\\\\\\\\\\_____/\\\\\\\\\\\\\\\__
 
 pragma solidity ^0.8.10;
 
-import "openzeppelin/token/ERC1155/ERC1155.sol";
+import "openzeppelin/token/ERC1155/extensions/ERC1155Supply.sol";
 import "openzeppelin/access/Ownable.sol";
 import "./interfaces/IRewardNft.sol";
 
-contract RewardNft is Ownable, ERC1155, IRewardNft {
+contract RewardNft is Ownable, ERC1155Supply, IRewardNft {
     address bounties;
     uint256 collectionsCount;
 

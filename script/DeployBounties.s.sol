@@ -19,7 +19,7 @@ contract DeployBounties is Script {
         uint256 protocolFee = 10_00;
 
         // TODO: be sure to set correct last bounty id before each run
-        uint256 lastBountyId = block.chainid == 137 ? 44 : 117;
+        uint256 lastBountyId = block.chainid == 137 ? 44 : 119;
 
         address swapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
 

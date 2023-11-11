@@ -257,11 +257,12 @@ contract BountiesTest is TestHelper {
 
         assertEq(rewardNft.balanceOf(bidderAddress, 1), 1);
         assertEq(rewardNft.balanceOf(bidderAddress2, 1), 1);
+        assertEq(rewardNft.totalSupply(1), 2);
 
         address[] memory recipients = new address[](2);
         recipients[0] = address(1);
         recipients[1] = address(2);
-        bounties.nftSettle(newBountyId, recipients);
+        bounties.nftSettlePayOnly(newBountyId, recipients);
 
         assertEq(rewardNft.balanceOf(address(1), 1), 1);
         assertEq(rewardNft.balanceOf(address(2), 1), 1);

@@ -60,7 +60,7 @@ forge script script/WithdrawFees.s.sol:WithdrawFees --rpc-url mumbai --broadcast
 forge script script/CreateNFTBounty.s.sol:CreateNFTBounty --rpc-url mumbai -vvvv
 
 # test test settle bounty
-forge script script/RankedSettle.s.sol:RankedSettle --rpc-url mumbai -vvvv
+forge script script/TestSettle.s.sol:TestSettle --rpc-url mumbai -vvvv
 ```
 
 ## Deployment
@@ -107,11 +107,11 @@ Other Params
 
 ### Mumbai
 
-RevShare: 0x0edeDA2BcD691f5225E2cD7b804d9F69DD772c9B
+RevShare: 0x2A3A95f255E4A72d272e06ecaE672CE00debA258
 
-Bounties: 0xF02FA0e639b3615cc20B89db5Ea722F29EFa08D8
+Bounties: 0xEB19265435306432667D7653A03A18134C03FE00
 
-RewardNft: 0x2fE77584e7c0518c17d025a447C9Ea63a4AD2EE0
+RewardNft: 0xD00053aeA3d3fA83E71D6158642Cd063D481c8E2
 
 ### Polygon
 

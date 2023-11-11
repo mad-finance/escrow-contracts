@@ -271,7 +271,7 @@ contract Bounties is Ownable, Constants {
      * @param bountyId bounty to settle
      * @param recipients array of recipients
      */
-    function nftSettle(uint256 bountyId, address[] calldata recipients) external {
+    function nftSettlePayOnly(uint256 bountyId, address[] calldata recipients) external {
         Bounty memory bounty = bounties[bountyId];
         if (bounty.collectionId == 0) {
             revert NFTBounty(bountyId);
