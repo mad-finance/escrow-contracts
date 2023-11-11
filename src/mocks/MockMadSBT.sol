@@ -9,16 +9,25 @@ import "madfi-protocol/interfaces/IMadSBT.sol";
 contract MockMadSBT {
     mapping(address => uint128) public points;
 
-    function handleRewardsUpdate(
-        address account,
-        uint256, // collectionId
-        uint256, // profileId
-        IMadSBT.Action rewardEnum
-    ) external {
-        if (rewardEnum == IMadSBT.Action.CREATE_BOUNTY) {
+    address public rewardsToken;
+
+    constructor(address _rewardsToken) {
+        rewardsToken = _rewardsToken;
+    }
+
+    function handleRewardsUpdate(address account, uint256, uint8 actionEnum) external {
+        if (actionEnum == 3) {
             points[account] += 100;
-        } else if (rewardEnum == IMadSBT.Action.ACCEPTED_BID) {
+        } else if (actionEnum == 4) {
             points[account] += 25;
         }
+    }
+
+    function activeCollection(address) external pure returns (uint256) {
+        return 1;
+    }
+
+    function distributeRewards(uint256 collectionId, uint256 revShareAmount) external {
+        // do nothing
     }
 }

@@ -1,4 +1,4 @@
-# Briefs/Bounties Smart Contracts
+# MadFi Bounties Smart Contracts
 
 Smart contracts for escrowing funds for bounties and issuing funds/rewards.
 
@@ -9,29 +9,37 @@ Smart contracts for escrowing funds for bounties and issuing funds/rewards.
 3. `forge build` to compile contracts
 4. `forge test` to run tests
 
-## Escrow
+## Bounties
 
-Escrows funds for bounties.
+Manages Bounties.
 
 Functions:
 
-- deposit: Specify amount and address of token and time period of bounty. Transfers tokens into escrow contract. Returns a id for the bounty.
+- deposit: Specify amount and address of token. Transfers tokens into contract. Returns a id for the bounty.
 
-- settle: Specifies winners of bounty and distributes funds and posts to Lens
+- depositNft: Specify token uri and create a bounty with an nft as reward instead of cash
 
-- rankedSettle: settles the bounty by splitting between all recipients and posts to Lens. There are different versions for posting, mirroring, commenting, following and collecting.
+- rankedSettle: settles the bounty by distributing funds to each recipient that has a verified signature. Then posts to Lens and mirrors and/or follows if specified.
 
-- refund: Returns escrowed tokens for a bounty to sponsor. Can only be called by contract owner.
+- nftSettle: settle an nft bounty
+
+- topUp: add funds to a bounty
+
+- close: close bounty and return remaining funds
+
+Admin Functions
 
 - setProtocolFee: sets the protocol fee (in basis points). Can only be called by contract owner.
 
 - withdrawFees: withdraws all accumulated fees
 
-- addDepositors: Adds addresses that are allowed to create bounties
+- setMadSbt: sets the MadSBT contract, collection ID and profile ID
 
-- removeDepositors: Removes addresses that are allowed to create bounties
+- setRewardNft: sets the RewardNft contract
 
-- openTheGates: remove allowlist requirement for depositors
+## RewardNft
+
+An erc1155 contract that can be used for free bounties where winners are just minted an nft in a collection for that bounty.
 
 ## PermissionedMintNft
 
@@ -42,18 +50,73 @@ An nft contract with unlimited supply that requires a signature from the contrac
 ```bash
 source .env
 
-# deploy escrow contract
-forge script script/Deploy.s.sol:DeployScript --rpc-url polygon --broadcast --verify -vvvv
-
-# deploy escrow contract v2
-forge script script/DeployV2.s.sol:DeployScript --rpc-url polygon --broadcast --verify -vvvv
+# deploy bounties contract
+forge script script/DeployBounties.s.sol:DeployBounties --rpc-url mumbai --broadcast --verify -vvvv
 
 # withdraw fees
-forge script script/WithdrawFees.s.sol:WithdrawFeesScript --rpc-url polygon --broadcast -vvvv
+forge script script/WithdrawFees.s.sol:WithdrawFees --rpc-url mumbai --broadcast -vvvv
 
-# add despoitor
-forge script script/AddDepositors.s.sol:AddDepositorsScript --rpc-url polygon --broadcast -vvvv
+# test create nft bounty
+forge script script/CreateNFTBounty.s.sol:CreateNFTBounty --rpc-url mumbai -vvvv
 
-#when verification fails
-forge verify-contract --chain-id 137 --num-of-optimizations 20000 --watch --constructor-args $(cast abi-encode "constructor(address,uint256,uint256)" "0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d" 1000 4) --compiler-version v0.8.10+commit.fc410830 <contract_address> src/EscrowV2.sol:EscrowV2 <etherscan_key>
+# test test settle bounty
+forge script script/TestSettle.s.sol:TestSettle --rpc-url mumbai -vvvv
 ```
+
+## Deployment
+
+1. Be sure to set correct last bounty id for your chain id
+2. In ILensProtocol change the Types import to `import {Types} from '../../contracts/libraries/constants/Types.sol';` before deploying because otherwise polygonscan verification messes up.
+3. Run the deploy script
+4. Set contract as verified on MadSBT contract so rewards can be distributed
+
+## Bounties in depth
+
+`rankedSettle` is the default way to pay out from a bounty.
+
+```
+function rankedSettle(uint256 bountyId, RankedSettleInput[] calldata input, uint24 fee) external
+
+struct RankedSettleInput {
+    uint256 bid;
+    address recipient;
+    uint256 revShare;
+    bytes signature;
+    Types.PostParams postParams;
+    Types.MirrorParams mirrorParams;
+    FollowParams followParams;
+}
+```
+
+`input` struct
+
+- bid: the amount of the bounty token to be the recipient
+- recipient: the address of the recipients
+- revShare: the percent of the recipient's split to be distributed through their MaadSBT badge. If they don't have this param will do nothing
+- signature: signature of the entire struct (except signature) signed by the recipient
+- postParams: the params for the post to be made to Lens
+- mirrorParams: the params for the mirror to be made to Lens (if any)
+- followParams: the params for the follow to be made to Lens (if any)
+
+Other Params
+
+- bountyId: the id of the bounty
+- fee: if they include a rev share and the bounty token is not the same as the underlying asset for their mad sbt badge reward super token it will need to be swapped. this fee is the fee for the uniswap pool to swap through. It will be 500, 3000 or 10000 (0.05%, .3% or 1%)
+
+## Deployments
+
+### Mumbai
+
+RevShare: 0x2A3A95f255E4A72d272e06ecaE672CE00debA258
+
+Bounties: 0xEB19265435306432667D7653A03A18134C03FE00
+
+RewardNft: 0xD00053aeA3d3fA83E71D6158642Cd063D481c8E2
+
+### Polygon
+
+RevShare:
+
+Bounties:
+
+RewardNft:
