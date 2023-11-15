@@ -23,10 +23,6 @@ contract MockMadSBT {
         }
     }
 
-    function activeCollection(address) external pure returns (uint256) {
-        return 1;
-    }
-
     function distributeRewards(uint256 collectionId, uint256 revShareAmount) external {
         // do nothing
     }

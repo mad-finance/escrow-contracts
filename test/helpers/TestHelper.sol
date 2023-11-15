@@ -111,6 +111,7 @@ contract TestHelper is Test, Constants {
         Bounties.RankedSettleInput[] memory input = new Bounties.RankedSettleInput[](1);
         input[0] = Bounties.RankedSettleInput({
             bid: bidAmount1,
+            bidderCollectionId: 0,
             recipient: bidderAddress,
             revShare: 0,
             signature: "",
@@ -123,7 +124,61 @@ contract TestHelper is Test, Constants {
         return input;
     }
 
-    function createSettleDataTwoBidders(uint256 newBountyId, uint256 revShare)
+    function createQuoteSettleData(uint256 newBountyId)
+        internal
+        view
+        returns (Bounties.RankedSettleInputQuote[] memory)
+    {
+        Types.QuoteParams memory quote = Types.QuoteParams({
+            profileId: bidderProfileId,
+            contentURI: "ipfs://123",
+            pointedProfileId: 0xec,
+            pointedPubId: 0x08,
+            referrerProfileIds: new uint256[](0),
+            referrerPubIds: new uint256[](0),
+            referenceModuleData: "",
+            actionModules: new address[](0),
+            actionModulesInitDatas: new bytes[](0),
+            referenceModule: address(0),
+            referenceModuleInitData: ""
+        });
+
+        Types.MirrorParams memory mirror = Types.MirrorParams({
+            profileId: bidderProfileId,
+            metadataURI: "ipfs://123",
+            pointedProfileId: 349,
+            pointedPubId: 0x04,
+            referrerProfileIds: new uint256[](0),
+            referrerPubIds: new uint256[](0),
+            referenceModuleData: ""
+        });
+
+        uint256[] memory idsOfProfilesToFollow = new uint256[](1);
+        idsOfProfilesToFollow[0] = 349;
+        Bounties.FollowParams memory follow = Bounties.FollowParams({
+            followerProfileId: bidderProfileId,
+            idsOfProfilesToFollow: idsOfProfilesToFollow,
+            followTokenIds: new uint256[](1),
+            datas: new bytes[](1)
+        });
+
+        Bounties.RankedSettleInputQuote[] memory input = new Bounties.RankedSettleInputQuote[](1);
+        input[0] = Bounties.RankedSettleInputQuote({
+            bid: bidAmount1,
+            bidderCollectionId: 0,
+            recipient: bidderAddress,
+            revShare: 0,
+            signature: "",
+            quoteParams: quote,
+            mirrorParams: mirror,
+            followParams: follow
+        });
+
+        input[0].signature = createSignatures(newBountyId, input)[0];
+        return input;
+    }
+
+    function createSettleDataTwoBidders(uint256 newBountyId, uint256 revShare, uint256 bidderCollectionId)
         internal
         view
         returns (Bounties.RankedSettleInput[] memory)
@@ -161,6 +216,7 @@ contract TestHelper is Test, Constants {
 
         input[0] = Bounties.RankedSettleInput({
             bid: bidAmount1,
+            bidderCollectionId: bidderCollectionId,
             recipient: bidderAddress,
             revShare: revShare,
             signature: "",
@@ -199,6 +255,7 @@ contract TestHelper is Test, Constants {
         });
         input[1] = Bounties.RankedSettleInput({
             bid: bidAmount2,
+            bidderCollectionId: bidderCollectionId,
             recipient: bidderAddress2,
             revShare: revShare,
             signature: "",
@@ -305,6 +362,60 @@ contract TestHelper is Test, Constants {
         return input;
     }
 
+    function createNftSettleDataQuote(uint256 newBountyId)
+        internal
+        view
+        returns (Bounties.NftSettleInputQuote[] memory)
+    {
+        Bounties.NftSettleInputQuote[] memory input = new Bounties.NftSettleInputQuote[](1);
+
+        Types.QuoteParams memory quote = Types.QuoteParams({
+            profileId: bidderProfileId,
+            contentURI: "ipfs://123",
+            pointedProfileId: 0xec,
+            pointedPubId: 0x08,
+            referrerProfileIds: new uint256[](0),
+            referrerPubIds: new uint256[](0),
+            referenceModuleData: "",
+            actionModules: new address[](0),
+            actionModulesInitDatas: new bytes[](0),
+            referenceModule: address(0),
+            referenceModuleInitData: ""
+        });
+
+        Types.MirrorParams memory mirror1 = Types.MirrorParams({
+            profileId: bidderProfileId,
+            metadataURI: "ipfs://123",
+            pointedProfileId: 349,
+            pointedPubId: 0x04,
+            referrerProfileIds: new uint256[](0),
+            referrerPubIds: new uint256[](0),
+            referenceModuleData: ""
+        });
+
+        uint256[] memory idsOfProfilesToFollow1 = new uint256[](1);
+        idsOfProfilesToFollow1[0] = 349;
+        Bounties.FollowParams memory follow1 = Bounties.FollowParams({
+            followerProfileId: bidderProfileId,
+            idsOfProfilesToFollow: idsOfProfilesToFollow1,
+            followTokenIds: new uint256[](1),
+            datas: new bytes[](1)
+        });
+
+        input[0] = Bounties.NftSettleInputQuote({
+            nonce: bounties.nftSettleNonces(newBountyId, bidderAddress),
+            recipient: bidderAddress,
+            signature: "",
+            quoteParams: quote,
+            mirrorParams: mirror1,
+            followParams: follow1
+        });
+
+        input[0].signature = createSignatures(newBountyId, input)[0];
+
+        return input;
+    }
+
     function createPayOnlySettleDataTwoBidders(uint256 newBountyId, uint256 revShare)
         internal
         view
@@ -313,10 +424,20 @@ contract TestHelper is Test, Constants {
         Bounties.BidFromAction[] memory input = new Bounties.BidFromAction[](2);
 
         // bidder 1
-        input[0] = Bounties.BidFromAction({bid: bidAmount1, recipient: bidderAddress, revShare: revShare});
+        input[0] = Bounties.BidFromAction({
+            bid: bidAmount1,
+            recipient: bidderAddress,
+            revShare: revShare,
+            bidderCollectionId: 0
+        });
 
         // bidder 2
-        input[1] = Bounties.BidFromAction({bid: bidAmount2, recipient: bidderAddress2, revShare: revShare});
+        input[1] = Bounties.BidFromAction({
+            bid: bidAmount2,
+            recipient: bidderAddress2,
+            revShare: revShare,
+            bidderCollectionId: 0
+        });
 
         bytes[] memory signatures = createSignatures(newBountyId, input);
 
@@ -345,7 +466,51 @@ contract TestHelper is Test, Constants {
         return signatures;
     }
 
+    function createSignatures(uint256 bountyId, Bounties.RankedSettleInputQuote[] memory data)
+        internal
+        view
+        returns (bytes[] memory)
+    {
+        bytes[] memory signatures = new bytes[](data.length);
+        uint256 i;
+        while (i < signatures.length) {
+            // Create the typed data hash
+            bytes32 messageHash = hashRankedSettleInput(bountyId, data[i]);
+            bytes32 typedDataHash = toTypedDataHash(messageHash);
+
+            uint256 privateKey = i == 0 ? bidderPrivateKey : bidderPrivateKey2;
+            (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, typedDataHash);
+            signatures[i] = abi.encodePacked(r, s, v);
+            unchecked {
+                ++i;
+            }
+        }
+        return signatures;
+    }
+
     function createSignatures(uint256 bountyId, Bounties.NftSettleInput[] memory data)
+        internal
+        view
+        returns (bytes[] memory)
+    {
+        bytes[] memory signatures = new bytes[](data.length);
+        uint256 i;
+        while (i < signatures.length) {
+            // Create the typed data hash
+            bytes32 messageHash = hashNftSettleInput(bountyId, data[i]);
+            bytes32 typedDataHash = toTypedDataHash(messageHash);
+
+            uint256 privateKey = i == 0 ? bidderPrivateKey : bidderPrivateKey2;
+            (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, typedDataHash);
+            signatures[i] = abi.encodePacked(r, s, v);
+            unchecked {
+                ++i;
+            }
+        }
+        return signatures;
+    }
+
+    function createSignatures(uint256 bountyId, Bounties.NftSettleInputQuote[] memory data)
         internal
         view
         returns (bytes[] memory)
@@ -412,11 +577,7 @@ contract TestHelper is Test, Constants {
         return keccak256(abi.encodePacked(bytesArrayEncodedElements));
     }
 
-    function hashLensInputs(
-        Types.PostParams memory postParams,
-        Types.MirrorParams memory mirrorParams,
-        Bounties.FollowParams memory followParams
-    ) private pure returns (bytes32 postParamsHash, bytes32 mirrorParamsHash, bytes32 followParamsHash) {
+    function hashLensInputs(Types.PostParams memory postParams) private pure returns (bytes32 postParamsHash) {
         postParamsHash = keccak256(
             abi.encode(
                 POST_PARAMS_TYPEHASH,
@@ -428,7 +589,32 @@ contract TestHelper is Test, Constants {
                 keccak256(postParams.referenceModuleInitData)
             )
         );
+    }
 
+    function hashLensInputs(Types.QuoteParams memory quoteParams) private pure returns (bytes32 quoteParamsHash) {
+        quoteParamsHash = keccak256(
+            abi.encode(
+                QUOTE_PARAMS_TYPEHASH,
+                quoteParams.profileId,
+                keccak256(bytes(quoteParams.contentURI)),
+                quoteParams.pointedProfileId,
+                quoteParams.pointedPubId,
+                keccak256(abi.encodePacked(quoteParams.referrerProfileIds)),
+                keccak256(abi.encodePacked(quoteParams.referrerPubIds)),
+                keccak256(quoteParams.referenceModuleData),
+                keccak256(abi.encodePacked(quoteParams.actionModules)),
+                _encodeUsingEip712Rules(quoteParams.actionModulesInitDatas),
+                quoteParams.referenceModule,
+                keccak256(quoteParams.referenceModuleInitData)
+            )
+        );
+    }
+
+    function hashLensInputs(Types.MirrorParams memory mirrorParams, Bounties.FollowParams memory followParams)
+        private
+        pure
+        returns (bytes32 mirrorParamsHash, bytes32 followParamsHash)
+    {
         mirrorParamsHash = keccak256(
             abi.encode(
                 MIRROR_PARAMS_TYPEHASH,
@@ -453,18 +639,15 @@ contract TestHelper is Test, Constants {
         );
     }
 
-    function hashRankedSettleInput(uint256 bountyId, Bounties.RankedSettleInput memory input)
-        private
-        pure
-        returns (bytes32)
-    {
-        (bytes32 postParamsHash, bytes32 mirrorParamsHash, bytes32 followParamsHash) =
-            hashLensInputs(input.postParams, input.mirrorParams, input.followParams);
+    function hashRankedSettleInput(uint256 bountyId, Bounties.RankedSettleInput memory input) private pure returns (bytes32) {
+        (bytes32 postParamsHash) = hashLensInputs(input.postParams);
+        (bytes32 mirrorParamsHash, bytes32 followParamsHash) = hashLensInputs(input.mirrorParams, input.followParams);
         return keccak256(
             abi.encode(
                 RANKED_SETTLE_INPUT_TYPEHASH,
                 bountyId,
                 input.bid,
+                input.bidderCollectionId,
                 input.recipient,
                 input.revShare,
                 postParamsHash,
@@ -474,13 +657,31 @@ contract TestHelper is Test, Constants {
         );
     }
 
-    function hashNftSettleInput(uint256 bountyId, Bounties.NftSettleInput memory input)
+    function hashRankedSettleInput(uint256 bountyId, Bounties.RankedSettleInputQuote memory input)
         private
         pure
         returns (bytes32)
     {
-        (bytes32 postParamsHash, bytes32 mirrorParamsHash, bytes32 followParamsHash) =
-            hashLensInputs(input.postParams, input.mirrorParams, input.followParams);
+        (bytes32 quoteParamsHash) = hashLensInputs(input.quoteParams);
+        (bytes32 mirrorParamsHash, bytes32 followParamsHash) = hashLensInputs(input.mirrorParams, input.followParams);
+        return keccak256(
+            abi.encode(
+                RANKED_SETTLE_INPUT_QUOTE_TYPEHASH,
+                bountyId,
+                input.bid,
+                input.bidderCollectionId,
+                input.recipient,
+                input.revShare,
+                quoteParamsHash,
+                mirrorParamsHash,
+                followParamsHash
+            )
+        );
+    }
+
+    function hashNftSettleInput(uint256 bountyId, Bounties.NftSettleInput memory input) private pure returns (bytes32) {
+        (bytes32 postParamsHash) = hashLensInputs(input.postParams);
+        (bytes32 mirrorParamsHash, bytes32 followParamsHash) = hashLensInputs(input.mirrorParams, input.followParams);
         return keccak256(
             abi.encode(
                 NFT_SETTLE_INPUT_TYPEHASH,
@@ -494,12 +695,28 @@ contract TestHelper is Test, Constants {
         );
     }
 
-    function hashBidFromActionInput(uint256 bountyId, Bounties.BidFromAction memory input)
-        private
-        pure
-        returns (bytes32)
-    {
-        return keccak256(abi.encode(PAY_ONLY_INPUT_TYPEHASH, bountyId, input.bid, input.recipient, input.revShare));
+    function hashNftSettleInput(uint256 bountyId, Bounties.NftSettleInputQuote memory input) private pure returns (bytes32) {
+        (bytes32 quoteParamsHash) = hashLensInputs(input.quoteParams);
+        (bytes32 mirrorParamsHash, bytes32 followParamsHash) = hashLensInputs(input.mirrorParams, input.followParams);
+        return keccak256(
+            abi.encode(
+                NFT_SETTLE_INPUT_QUOTE_TYPEHASH,
+                bountyId,
+                input.nonce,
+                input.recipient,
+                quoteParamsHash,
+                mirrorParamsHash,
+                followParamsHash
+            )
+        );
+    }
+
+    function hashBidFromActionInput(uint256 bountyId, Bounties.BidFromAction memory input) private pure returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                PAY_ONLY_INPUT_TYPEHASH, bountyId, input.bid, input.bidderCollectionId, input.recipient, input.revShare
+            )
+        );
     }
 
     function createBidFromActionParam(address[] memory recipients, uint256[] memory bids, uint256[] memory revShares)
@@ -510,7 +727,12 @@ contract TestHelper is Test, Constants {
         Bounties.BidFromAction[] memory data = new Bounties.BidFromAction[](recipients.length);
         uint256 i;
         while (i < recipients.length) {
-            data[i] = Bounties.BidFromAction({recipient: recipients[i], bid: bids[i], revShare: revShares[i]});
+            data[i] = Bounties.BidFromAction({
+                recipient: recipients[i],
+                bid: bids[i],
+                revShare: revShares[i],
+                bidderCollectionId: 0
+            });
             unchecked {
                 ++i;
             }

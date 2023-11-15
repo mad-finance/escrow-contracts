@@ -17,7 +17,7 @@ contract TestSettle is Script {
 
         address bountiesAddress = block.chainid == 137
             ? 0x385B33C3127d5AF5F74fB4193a8dFd86D9a4A166
-            : 0xEB19265435306432667D7653A03A18134C03FE00;
+            : 0xFa5f9e598777A2787ab16f8B306Ceb21156DDC06;
 
         Bounties bounties = Bounties(payable(bountiesAddress));
 

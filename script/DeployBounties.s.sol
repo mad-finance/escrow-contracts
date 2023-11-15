@@ -19,7 +19,7 @@ contract DeployBounties is Script {
         uint256 protocolFee = 10_00;
 
         // TODO: be sure to set correct last bounty id before each run
-        uint256 lastBountyId = block.chainid == 137 ? 44 : 119;
+        uint256 lastBountyId = block.chainid == 137 ? 44 : 125;
 
         address swapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
@@ -27,7 +27,7 @@ contract DeployBounties is Script {
 
         address _madSBT = block.chainid == 137
             ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // TODO: polygon?
-            : 0x492D70cC758b02E576d3a68D9f560F33472a1Dc9; // mumbai
+            : 0x90B57ad79672DC8461E59709eB954D256934095d; // mumbai
         uint256 _collectionId = 1;
         uint256 _profileId = block.chainid == 137 ? 8640 : 349;
         bounties.setMadSBT(_madSBT, _collectionId, _profileId);

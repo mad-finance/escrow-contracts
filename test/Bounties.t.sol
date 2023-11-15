@@ -10,9 +10,9 @@ contract BountiesTest is TestHelper {
         vm.startPrank(defaultSender);
         uint256 bountyAmount = 123;
         helperMintApproveTokens(bountyAmount, defaultSender, usdc);
-        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
+        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount, 0);
         assertEq(newBountyId, 1);
-        (uint256 amount,, address sponsor, address token) = bounties.bounties(newBountyId);
+        (uint256 amount,, address sponsor,, address token) = bounties.bounties(newBountyId);
         assertEq(token, address(usdc));
         assertEq(amount, bountyAmount);
         assertEq(sponsor, defaultSender);
@@ -23,9 +23,9 @@ contract BountiesTest is TestHelper {
         vm.startPrank(defaultSender);
         uint256 bountyAmount = 123;
         helperMintApproveTokens(bountyAmount, defaultSender, usdc);
-        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
+        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount, 0);
         assertEq(newBountyId, 1);
-        (uint256 amount,, address sponsor, address token) = bounties.bounties(newBountyId);
+        (uint256 amount,, address sponsor,, address token) = bounties.bounties(newBountyId);
         assertEq(token, address(usdc));
         assertEq(amount, bountyAmount);
         assertEq(sponsor, defaultSender);
@@ -34,7 +34,7 @@ contract BountiesTest is TestHelper {
         uint256 topUpAmount = 100;
         helperMintApproveTokens(topUpAmount, defaultSender, usdc);
         bounties.topUp(newBountyId, topUpAmount);
-        (amount,, sponsor, token) = bounties.bounties(newBountyId);
+        (amount,, sponsor,, token) = bounties.bounties(newBountyId);
         assertEq(amount, bountyAmount + topUpAmount);
         vm.stopPrank();
     }
@@ -43,7 +43,7 @@ contract BountiesTest is TestHelper {
         vm.startPrank(defaultSender);
         uint256 bountyAmount = 123;
         helperMintApproveTokens(bountyAmount, defaultSender, usdc);
-        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
+        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount, 0);
 
         Bounties.RankedSettleInput[] memory input = createSettleData(newBountyId);
 
@@ -58,9 +58,9 @@ contract BountiesTest is TestHelper {
         helperMintApproveTokens(bountyAmount, defaultSender, usdc);
         uint256 tokenAmountBefore = usdc.balanceOf(defaultSender);
 
-        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
+        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount, 0);
 
-        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 0);
+        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 0, 0);
 
         bounties.rankedSettle(newBountyId, input, uniswapFee);
         bounties.close(newBountyId);
@@ -75,6 +75,27 @@ contract BountiesTest is TestHelper {
         assertEq(usdc.balanceOf(defaultSender), expected3);
     }
 
+    function testSettleRankedBountyQuote() public {
+        vm.startPrank(defaultSender);
+        uint256 bountyAmount = 100_000_000;
+        helperMintApproveTokens(bountyAmount, defaultSender, usdc);
+        uint256 tokenAmountBefore = usdc.balanceOf(defaultSender);
+
+        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount, 0);
+
+        Bounties.RankedSettleInputQuote[] memory input = createQuoteSettleData(newBountyId);
+
+        bounties.rankedSettleQuote(newBountyId, input, uniswapFee);
+        bounties.close(newBountyId);
+
+        vm.stopPrank();
+
+        uint256 expected1 = bidAmount1;
+        uint256 expected2 = tokenAmountBefore - expected1;
+        assertEq(usdc.balanceOf(bidderAddress), expected1);
+        assertEq(usdc.balanceOf(defaultSender), expected2);
+    }
+
     function testSettleRankedBountyFromAction() public {
         address openAction = address(70);
 
@@ -85,7 +106,7 @@ contract BountiesTest is TestHelper {
         helperMintApproveTokens(bountyAmount, openAction, usdc);
         uint256 tokenAmountBefore = usdc.balanceOf(openAction);
 
-        uint256 newBountyId = bounties.depositFromAction(defaultSender, address(usdc), bountyAmount);
+        uint256 newBountyId = bounties.depositFromAction(defaultSender, address(usdc), bountyAmount, 0);
 
         address[] memory recipients = new address[](2);
         recipients[0] = bidderAddress;
@@ -129,7 +150,7 @@ contract BountiesTest is TestHelper {
         helperMintApproveTokens(bountyAmount, defaultSender, usdc);
         uint256 tokenAmountBefore = usdc.balanceOf(defaultSender);
 
-        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
+        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount, 0);
 
         (Bounties.BidFromAction[] memory input, bytes[] memory signatures) =
             createPayOnlySettleDataTwoBidders(newBountyId, 0);
@@ -161,9 +182,9 @@ contract BountiesTest is TestHelper {
         helperMintApproveTokens(bountyAmount + ((500 * bountyAmount) / 10_000), defaultSender, usdc);
         uint256 beforeBal = usdc.balanceOf(defaultSender);
 
-        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
+        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount, 0);
 
-        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 0);
+        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 0, 0);
 
         bounties.rankedSettle(newBountyId, input, uniswapFee);
         bounties.close(newBountyId);
@@ -190,9 +211,9 @@ contract BountiesTest is TestHelper {
 
         assertEq(usdc.balanceOf(address(bounties)), 2 * bountyAmount);
 
-        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
+        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount, 0);
 
-        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 0);
+        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 0, 0);
 
         bounties.rankedSettle(newBountyId, input, uniswapFee);
         vm.stopPrank();
@@ -213,9 +234,9 @@ contract BountiesTest is TestHelper {
         helperMintApproveTokens(bountyAmount, address(bounties), usdc);
         uint256 beforeBal = usdc.balanceOf(defaultSender);
 
-        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
+        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount, 0);
 
-        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 0);
+        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 0, 0);
 
         bounties.rankedSettle(newBountyId, input, uniswapFee);
         bounties.close(newBountyId);
@@ -244,14 +265,15 @@ contract BountiesTest is TestHelper {
     function testNftRewardBounty() public {
         // create bounty
         vm.startPrank(defaultSender);
-        uint256 newBountyId = bounties.depositNft("ipfs://123");
+        uint256 newBountyId = bounties.depositNft("ipfs://123", 0);
         assertEq(newBountyId, 1);
-        (uint256 amount, uint256 collectionID, address sponsor, address token) = bounties.bounties(newBountyId);
+        (uint256 amount, uint256 collectionID, address sponsor,, address token) = bounties.bounties(newBountyId);
         assertEq(token, address(0));
         assertEq(amount, 0);
         assertEq(sponsor, defaultSender);
         assertEq(collectionID, 1);
 
+        // post settle
         Bounties.NftSettleInput[] memory input = createNftSettleDataTwoBidders(newBountyId);
         bounties.nftSettle(newBountyId, input);
 
@@ -259,6 +281,7 @@ contract BountiesTest is TestHelper {
         assertEq(rewardNft.balanceOf(bidderAddress2, 1), 1);
         assertEq(rewardNft.totalSupply(1), 2);
 
+        // pay only settle
         address[] memory recipients = new address[](2);
         recipients[0] = address(1);
         recipients[1] = address(2);
@@ -266,6 +289,12 @@ contract BountiesTest is TestHelper {
 
         assertEq(rewardNft.balanceOf(address(1), 1), 1);
         assertEq(rewardNft.balanceOf(address(2), 1), 1);
+
+        // quote settle
+        Bounties.NftSettleInputQuote[] memory inputQuote = createNftSettleDataQuote(newBountyId);
+        bounties.nftSettleQuote(newBountyId, inputQuote);
+
+        assertEq(rewardNft.balanceOf(bidderAddress, 1), 2);
 
         // close bounty
         bounties.close(newBountyId);
@@ -279,9 +308,9 @@ contract BountiesTest is TestHelper {
         helperMintApproveTokens(bountyAmount, defaultSender, usdc);
         uint256 tokenAmountBefore = usdc.balanceOf(defaultSender);
 
-        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount);
+        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount, 0);
 
-        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 10_00);
+        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 10_00, 1);
 
         bounties.rankedSettle(newBountyId, input, uniswapFee);
         bounties.close(newBountyId);
@@ -303,9 +332,9 @@ contract BountiesTest is TestHelper {
         uint256 recipient1BalanceBefore = wmatic.balanceOf(bidderAddress);
         uint256 recipient2BalanceBefore = wmatic.balanceOf(bidderAddress2);
 
-        uint256 newBountyId = bounties.deposit(address(wmatic), bountyAmount);
+        uint256 newBountyId = bounties.deposit(address(wmatic), bountyAmount, 0);
 
-        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 10_00);
+        Bounties.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 10_00, 1);
 
         bounties.rankedSettle(newBountyId, input, uniswapFee);
         bounties.close(newBountyId);
