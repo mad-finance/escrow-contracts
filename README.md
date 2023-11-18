@@ -79,6 +79,7 @@ function rankedSettle(uint256 bountyId, RankedSettleInput[] calldata input, uint
 
 struct RankedSettleInput {
     uint256 bid;
+    uint256 bidderCollectionId;
     address recipient;
     uint256 revShare;
     bytes signature;
@@ -91,17 +92,35 @@ struct RankedSettleInput {
 `input` struct
 
 - bid: the amount of the bounty token to be the recipient
-- recipient: the address of the recipients
-- revShare: the percent of the recipient's split to be distributed through their MaadSBT badge. If they don't have this param will do nothing
-- signature: signature of the entire struct (except signature) signed by the recipient
+- bidderCollectionId: if the bidder has a mad sbt badge they can specify the collection id here for revshare
+- recipient: the address of the recipient
+- revShare: the percent of the recipient's split to be distributed through their MadSBT badge. If they don't have a badge it will be ignored
+- signature: signature of the entire struct (except signature) + bountyid signed by the recipient
 - postParams: the params for the post to be made to Lens
 - mirrorParams: the params for the mirror to be made to Lens (if any)
 - followParams: the params for the follow to be made to Lens (if any)
+
+`RankedSettleInputQuote` has the same params with QuoteParams instead of PostParams. Must be settled with `rankedSettleQuote`.
+
+You can also do a `rankedSettlePayOnly` which will not interact with Lens at all and takes `BidFromAction` struct for each user.
+
+```
+struct BidFromAction {
+    uint256 bid;
+    uint256 bidderCollectionId;
+    address recipient;
+    uint256 revShare;
+}
+```
 
 Other Params
 
 - bountyId: the id of the bounty
 - fee: if they include a rev share and the bounty token is not the same as the underlying asset for their mad sbt badge reward super token it will need to be swapped. this fee is the fee for the uniswap pool to swap through. It will be 500, 3000 or 10000 (0.05%, .3% or 1%)
+
+### NFT Bounties
+
+Same deal but created with `depositNft` and settled with `nftSettle`, `nftSettleQuote` or `nftSettlePayOnly`. This bounty type creates an ERC1155 collection for the bounty and mints the nft to the recipient.
 
 ## Deployments
 

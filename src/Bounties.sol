@@ -20,13 +20,13 @@ import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/access/Ownable.sol";
 import "openzeppelin/utils/cryptography/ECDSA.sol";
 
-import "madfi-protocol/interfaces/IMadSBT.sol";
-
 import "lens/interfaces/ILensProtocol.sol";
+
+import "madfi-protocol/interfaces/IMadSBT.sol";
+import {RevShare} from "madfi-protocol/libraries/RevShare.sol";
 
 import "./libraries/Constants.sol";
 import "./interfaces/IRewardNft.sol";
-import {RevShare} from "madfi-protocol/libraries/RevShare.sol";
 
 contract Bounties is Ownable, Constants {
     using ECDSA for bytes32;
@@ -159,6 +159,7 @@ contract Bounties is Ownable, Constants {
      * @notice desposits tokens creating an open bounty
      * @param token token to deposit
      * @param amount amount of token to deposit
+     * @param sponsorCollectionId collection ID of the sponsor
      */
     function deposit(address token, uint256 amount, uint256 sponsorCollectionId) external returns (uint256 bountyId) {
         uint256 total = amount + calcFee(amount);
@@ -178,6 +179,7 @@ contract Bounties is Ownable, Constants {
      * @param account the Lens profile owner creating the bounty
      * @param token token to deposit
      * @param totalAmount amount of tokens to deposit, including the fee
+     * @param sponsorCollectionId collection ID of the sponsor
      */
     function depositFromAction(address account, address token, uint256 totalAmount, uint256 sponsorCollectionId)
         external
@@ -198,6 +200,7 @@ contract Bounties is Ownable, Constants {
     /**
      * @notice create a new bounty with an NFT
      * @param _uri uri to create collection with
+     * @param sponsorCollectionId collection ID of the sponsor
      */
     function depositNft(string calldata _uri, uint256 sponsorCollectionId) external returns (uint256 bountyId) {
         uint256 nftCollectionId = rewardNft.createCollection(_uri);
@@ -412,7 +415,7 @@ contract Bounties is Ownable, Constants {
         emit SetProtocolFee(_protocolFee);
     }
 
-    /// @notice withdraws all accumulated fees
+    /// @notice withdraws all accumulated fees denominated in the specified tokens to the owner
     function withdrawFees(address[] calldata _tokens) external onlyOwner {
         for (uint256 i = 0; i < _tokens.length;) {
             uint256 contractBal = feesEarned[_tokens[i]];
@@ -518,6 +521,7 @@ contract Bounties is Ownable, Constants {
      * @dev This is an internal function that verifies the signatures of the recipients
      * @param bountyId The ID of the bounty
      * @param data The array of BidFromAction structs
+     * @param signatures The array of signatures
      */
     function _verifySignatures(uint256 bountyId, BidFromAction[] calldata data, bytes[] calldata signatures)
         internal
@@ -889,6 +893,7 @@ contract Bounties is Ownable, Constants {
      * @param recipient address to disperse to
      * @param bid amount to disperse
      * @param revShare percentage of bid to pay to rev share
+     * @param bidderCollectionId collection ID of the bidder
      * @param fee uniswap v3 fee in case of rev share swap
      */
     function _bidPayment(
