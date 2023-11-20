@@ -18,96 +18,24 @@ pragma solidity ^0.8.10;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/access/Ownable.sol";
-import "openzeppelin/utils/cryptography/ECDSA.sol";
-
-import "lens/interfaces/ILensProtocol.sol";
 
 import "madfi-protocol/interfaces/IMadSBT.sol";
 import {RevShare} from "madfi-protocol/libraries/RevShare.sol";
 
-import "./libraries/Constants.sol";
+import "./libraries/VerifySignatures.sol";
 import "./interfaces/IRewardNft.sol";
 
-contract Bounties is Ownable, Constants {
-    using ECDSA for bytes32;
-
+/**
+ * @dev This contract handles the creation and settlement of bounties
+ */
+contract Bounties is Ownable, VerifySignatures {
     uint256 public protocolFee; // basis points
     mapping(address => uint256) public feesEarned;
 
     uint256 public count;
-    mapping(uint256 => Bounty) public bounties;
+    mapping(uint256 => Structs.Bounty) public bounties;
 
     mapping(uint256 => mapping(address => uint256)) public nftSettleNonces; // bountyId => recipient => nonces
-
-    struct Bounty {
-        uint256 amount;
-        uint256 collectionId;
-        address sponsor;
-        uint256 sponsorCollectionId;
-        address token;
-    }
-
-    struct RankedSettleInput {
-        uint256 bid;
-        uint256 bidderCollectionId;
-        address recipient;
-        uint256 revShare;
-        bytes signature;
-        Types.PostParams postParams;
-        Types.MirrorParams mirrorParams;
-        FollowParams followParams;
-    }
-
-    struct RankedSettleInputQuote {
-        uint256 bid;
-        uint256 bidderCollectionId;
-        address recipient;
-        uint256 revShare;
-        bytes signature;
-        Types.QuoteParams quoteParams;
-        Types.MirrorParams mirrorParams;
-        FollowParams followParams;
-    }
-
-    struct NftSettleInput {
-        uint256 nonce;
-        address recipient;
-        bytes signature;
-        Types.PostParams postParams;
-        Types.MirrorParams mirrorParams;
-        FollowParams followParams;
-    }
-
-    struct NftSettleInputQuote {
-        uint256 nonce;
-        address recipient;
-        bytes signature;
-        Types.QuoteParams quoteParams;
-        Types.MirrorParams mirrorParams;
-        FollowParams followParams;
-    }
-
-    struct BidFromAction {
-        uint256 bid;
-        uint256 bidderCollectionId;
-        address recipient;
-        uint256 revShare;
-    }
-
-    struct RankedSettleFromActionInput {
-        uint256 bountyId;
-        uint256 bidTotal;
-        BidFromAction[] data;
-        Types.PostParams[] postParams;
-        uint24 fee;
-    }
-
-    struct FollowParams {
-        bytes[] datas;
-        uint256[] followTokenIds;
-        uint256 followerProfileId;
-        uint256[] idsOfProfilesToFollow;
-    }
 
     IRewardNft private rewardNft;
     address private publicationAction;
@@ -121,7 +49,7 @@ contract Bounties is Ownable, Constants {
     uint256 private profileId;
 
     /* EVENTS */
-    event BountyCreated(uint256 indexed bountyId, Bounty bounty);
+    event BountyCreated(uint256 indexed bountyId, Structs.Bounty bounty);
     event BountyNfts(uint256 indexed bountyId, uint256 nftsMinted);
     event BountyPayments(uint256 indexed bountyId, uint256 amount);
     event TopUp(uint256 indexed bountyId, uint256 amount);
@@ -137,7 +65,6 @@ contract Bounties is Ownable, Constants {
     error InvalidBidAmount(uint256 amount);
     error InvalidBidTotal(uint256 amount);
     error NFTBounty(uint256 bountyId);
-    error InvalidSignature(address bidder);
     error OnlyPublicationAction();
 
     modifier onlyPublicationAction() {
@@ -163,7 +90,7 @@ contract Bounties is Ownable, Constants {
      */
     function deposit(address token, uint256 amount, uint256 sponsorCollectionId) external returns (uint256 bountyId) {
         uint256 total = amount + calcFee(amount);
-        Bounty memory newBounty = Bounty(total, 0, _msgSender(), sponsorCollectionId, token);
+        Structs.Bounty memory newBounty = Structs.Bounty(total, 0, _msgSender(), sponsorCollectionId, token);
         bounties[++count] = newBounty;
 
         IERC20(token).transferFrom(_msgSender(), address(this), total);
@@ -186,7 +113,7 @@ contract Bounties is Ownable, Constants {
         onlyPublicationAction
         returns (uint256 bountyId)
     {
-        Bounty memory newBounty = Bounty(totalAmount, 0, account, sponsorCollectionId, token);
+        Structs.Bounty memory newBounty = Structs.Bounty(totalAmount, 0, account, sponsorCollectionId, token);
         bounties[++count] = newBounty;
 
         IERC20(token).transferFrom(_msgSender(), address(this), totalAmount);
@@ -204,7 +131,8 @@ contract Bounties is Ownable, Constants {
      */
     function depositNft(string calldata _uri, uint256 sponsorCollectionId) external returns (uint256 bountyId) {
         uint256 nftCollectionId = rewardNft.createCollection(_uri);
-        Bounty memory newBounty = Bounty(0, nftCollectionId, _msgSender(), sponsorCollectionId, address(0));
+        Structs.Bounty memory newBounty =
+            Structs.Bounty(0, nftCollectionId, _msgSender(), sponsorCollectionId, address(0));
         bounties[++count] = newBounty;
 
         madSBT.handleRewardsUpdate(_msgSender(), collectionId, BOUNTY_CREATE_REWARD_ENUM);
@@ -219,7 +147,7 @@ contract Bounties is Ownable, Constants {
      * @param input RankedSettleInput struct containing all inputs
      * @param fee uniswap v3 fee in case of rev share swap
      */
-    function rankedSettle(uint256 bountyId, RankedSettleInput[] calldata input, uint24 fee) external {
+    function rankedSettle(uint256 bountyId, Structs.RankedSettleInput[] calldata input, uint24 fee) external {
         _verifySignatures(bountyId, input);
         _rankedSettle(bountyId, input, fee);
 
@@ -237,7 +165,9 @@ contract Bounties is Ownable, Constants {
      * @param input RankedSettleInputQuote struct containing all inputs
      * @param fee uniswap v3 fee in case of rev share swap
      */
-    function rankedSettleQuote(uint256 bountyId, RankedSettleInputQuote[] calldata input, uint24 fee) external {
+    function rankedSettleQuote(uint256 bountyId, Structs.RankedSettleInputQuote[] calldata input, uint24 fee)
+        external
+    {
         _verifySignatures(bountyId, input);
         _rankedSettle(bountyId, input, fee);
 
@@ -258,7 +188,7 @@ contract Bounties is Ownable, Constants {
      */
     function rankedSettlePayOnly(
         uint256 bountyId,
-        BidFromAction[] calldata bidData,
+        Structs.BidFromAction[] calldata bidData,
         bytes[] calldata signatures,
         uint24 fee
     ) external {
@@ -270,7 +200,10 @@ contract Bounties is Ownable, Constants {
      * @notice disperse funds to recipients and posts to Lens
      * @param input RankedSettleInput struct containing all inputs
      */
-    function rankedSettleFromAction(RankedSettleFromActionInput calldata input) external onlyPublicationAction {
+    function rankedSettleFromAction(Structs.RankedSettleFromActionInput calldata input)
+        external
+        onlyPublicationAction
+    {
         _rankedSettleFromAction(input.bountyId, input.bidTotal, input.data, input.fee);
         for (uint256 i = 0; i < input.postParams.length;) {
             lensHub.post(input.postParams[i]);
@@ -285,8 +218,8 @@ contract Bounties is Ownable, Constants {
      * @param bountyId bounty to settle
      * @param input NftSettleInput struct containing all inputs
      */
-    function nftSettle(uint256 bountyId, NftSettleInput[] calldata input) external {
-        Bounty memory bounty = bounties[bountyId];
+    function nftSettle(uint256 bountyId, Structs.NftSettleInput[] calldata input) external {
+        Structs.Bounty memory bounty = bounties[bountyId];
         if (bounty.collectionId == 0) {
             revert NFTBounty(bountyId);
         }
@@ -315,8 +248,8 @@ contract Bounties is Ownable, Constants {
      * @param bountyId bounty to settle
      * @param input NftSettleInputQuote struct containing all inputs
      */
-    function nftSettleQuote(uint256 bountyId, NftSettleInputQuote[] calldata input) external {
-        Bounty memory bounty = bounties[bountyId];
+    function nftSettleQuote(uint256 bountyId, Structs.NftSettleInputQuote[] calldata input) external {
+        Structs.Bounty memory bounty = bounties[bountyId];
         if (bounty.collectionId == 0) {
             revert NFTBounty(bountyId);
         }
@@ -346,7 +279,7 @@ contract Bounties is Ownable, Constants {
      * @param recipients array of recipients
      */
     function nftSettlePayOnly(uint256 bountyId, address[] calldata recipients) external {
-        Bounty memory bounty = bounties[bountyId];
+        Structs.Bounty memory bounty = bounties[bountyId];
         if (bounty.collectionId == 0) {
             revert NFTBounty(bountyId);
         }
@@ -371,7 +304,7 @@ contract Bounties is Ownable, Constants {
      * @param amount amount of tokens to add
      */
     function topUp(uint256 bountyId, uint256 amount) external {
-        Bounty memory bounty = bounties[bountyId];
+        Structs.Bounty memory bounty = bounties[bountyId];
         if (bounty.collectionId != 0) {
             revert NFTBounty(bountyId);
         }
@@ -390,7 +323,7 @@ contract Bounties is Ownable, Constants {
             revert NotArbiter(_msgSender());
         }
 
-        Bounty memory bounty = bounties[bountyId];
+        Structs.Bounty memory bounty = bounties[bountyId];
         if (bounty.collectionId == 0) {
             IERC20(bounty.token).transfer(bounty.sponsor, bounty.amount);
         }
@@ -462,260 +395,13 @@ contract Bounties is Ownable, Constants {
     /* INTERNAL FUNCTIONS */
 
     /**
-     * @dev This is an internal function that verifies the signatures of the recipients
-     * @param bountyId The ID of the bounty
-     * @param data The array of RankedSettleInput structs
-     */
-    function _verifySignatures(uint256 bountyId, RankedSettleInput[] calldata data) internal view {
-        for (uint256 i = 0; i < data.length;) {
-            _recoverAddress(hashRankedSettleInput(bountyId, data[i]), data[i].recipient, data[i].signature);
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    /**
-     * @dev This is an internal function that verifies the signatures of the recipients
-     * @param bountyId The ID of the bounty
-     * @param data The array of BidFromAction structs
-     */
-    function _verifySignatures(uint256 bountyId, RankedSettleInputQuote[] calldata data) internal view {
-        for (uint256 i = 0; i < data.length;) {
-            _recoverAddress(hashRankedSettleInput(bountyId, data[i]), data[i].recipient, data[i].signature);
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    /**
-     * @dev This is an internal function that verifies the signatures of the recipients
-     * @param bountyId The ID of the bounty
-     * @param data The array of NftSettleInput structs
-     */
-    function _verifySignatures(uint256 bountyId, NftSettleInput[] calldata data) internal view {
-        for (uint256 i = 0; i < data.length;) {
-            _recoverAddress(hashNftSettleInput(bountyId, data[i]), data[i].recipient, data[i].signature);
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    /**
-     * @dev This is an internal function that verifies the signatures of the recipients
-     * @param bountyId The ID of the bounty
-     * @param data The array of NftSettleInputQuote structs
-     */
-    function _verifySignatures(uint256 bountyId, NftSettleInputQuote[] calldata data) internal view {
-        for (uint256 i = 0; i < data.length;) {
-            _recoverAddress(hashNftSettleInput(bountyId, data[i]), data[i].recipient, data[i].signature);
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    /**
-     * @dev This is an internal function that verifies the signatures of the recipients
-     * @param bountyId The ID of the bounty
-     * @param data The array of BidFromAction structs
-     * @param signatures The array of signatures
-     */
-    function _verifySignatures(uint256 bountyId, BidFromAction[] calldata data, bytes[] calldata signatures)
-        internal
-        view
-    {
-        for (uint256 i = 0; i < data.length;) {
-            _recoverAddress(hashBidFromActionInput(bountyId, data[i]), data[i].recipient, signatures[i]);
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    /**
-     * @dev This is an internal function that recovers the address of the signer
-     * @param messageHash The hash of the message
-     * @param recipient The address of the recipient
-     * @param signature The signature of the recipient
-     */
-    function _recoverAddress(bytes32 messageHash, address recipient, bytes memory signature) internal view {
-        bytes32 typedDataHash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, messageHash));
-        if (recipient != ECDSA.recover(typedDataHash, signature)) {
-            revert InvalidSignature(recipient);
-        }
-    }
-
-    function hashLensInputs(Types.PostParams memory postParams) private pure returns (bytes32 postParamsHash) {
-        postParamsHash = keccak256(
-            abi.encode(
-                POST_PARAMS_TYPEHASH,
-                postParams.profileId,
-                keccak256(bytes(postParams.contentURI)),
-                keccak256(abi.encodePacked(postParams.actionModules)),
-                _encodeUsingEip712Rules(postParams.actionModulesInitDatas),
-                postParams.referenceModule,
-                keccak256(postParams.referenceModuleInitData)
-            )
-        );
-    }
-
-    function hashLensInputs(Types.QuoteParams memory quoteParams) private pure returns (bytes32 quoteParamsHash) {
-        quoteParamsHash = keccak256(
-            abi.encode(
-                QUOTE_PARAMS_TYPEHASH,
-                quoteParams.profileId,
-                keccak256(bytes(quoteParams.contentURI)),
-                quoteParams.pointedProfileId,
-                quoteParams.pointedPubId,
-                keccak256(abi.encodePacked(quoteParams.referrerProfileIds)),
-                keccak256(abi.encodePacked(quoteParams.referrerPubIds)),
-                keccak256(quoteParams.referenceModuleData),
-                keccak256(abi.encodePacked(quoteParams.actionModules)),
-                _encodeUsingEip712Rules(quoteParams.actionModulesInitDatas),
-                quoteParams.referenceModule,
-                keccak256(quoteParams.referenceModuleInitData)
-            )
-        );
-    }
-
-    function hashLensInputs(Types.MirrorParams memory mirrorParams, FollowParams memory followParams)
-        private
-        pure
-        returns (bytes32 mirrorParamsHash, bytes32 followParamsHash)
-    {
-        mirrorParamsHash = keccak256(
-            abi.encode(
-                MIRROR_PARAMS_TYPEHASH,
-                mirrorParams.profileId,
-                keccak256(bytes(mirrorParams.metadataURI)),
-                mirrorParams.pointedProfileId,
-                mirrorParams.pointedPubId,
-                keccak256(abi.encodePacked(mirrorParams.referrerProfileIds)),
-                keccak256(abi.encodePacked(mirrorParams.referrerPubIds)),
-                keccak256(mirrorParams.referenceModuleData)
-            )
-        );
-
-        followParamsHash = keccak256(
-            abi.encode(
-                FOLLOW_PARAMS_TYPEHASH,
-                _encodeUsingEip712Rules(followParams.datas),
-                keccak256(abi.encodePacked(followParams.followTokenIds)),
-                followParams.followerProfileId,
-                keccak256(abi.encodePacked(followParams.idsOfProfilesToFollow))
-            )
-        );
-    }
-
-    function hashRankedSettleInput(uint256 bountyId, RankedSettleInput memory input) private pure returns (bytes32) {
-        (bytes32 postParamsHash) = hashLensInputs(input.postParams);
-        (bytes32 mirrorParamsHash, bytes32 followParamsHash) = hashLensInputs(input.mirrorParams, input.followParams);
-        return keccak256(
-            abi.encode(
-                RANKED_SETTLE_INPUT_TYPEHASH,
-                bountyId,
-                input.bid,
-                input.bidderCollectionId,
-                input.recipient,
-                input.revShare,
-                postParamsHash,
-                mirrorParamsHash,
-                followParamsHash
-            )
-        );
-    }
-
-    function hashRankedSettleInput(uint256 bountyId, RankedSettleInputQuote memory input)
-        private
-        pure
-        returns (bytes32)
-    {
-        (bytes32 quoteParamsHash) = hashLensInputs(input.quoteParams);
-        (bytes32 mirrorParamsHash, bytes32 followParamsHash) = hashLensInputs(input.mirrorParams, input.followParams);
-        return keccak256(
-            abi.encode(
-                RANKED_SETTLE_INPUT_QUOTE_TYPEHASH,
-                bountyId,
-                input.bid,
-                input.bidderCollectionId,
-                input.recipient,
-                input.revShare,
-                quoteParamsHash,
-                mirrorParamsHash,
-                followParamsHash
-            )
-        );
-    }
-
-    function hashNftSettleInput(uint256 bountyId, NftSettleInput memory input) private pure returns (bytes32) {
-        (bytes32 postParamsHash) = hashLensInputs(input.postParams);
-        (bytes32 mirrorParamsHash, bytes32 followParamsHash) = hashLensInputs(input.mirrorParams, input.followParams);
-        return keccak256(
-            abi.encode(
-                NFT_SETTLE_INPUT_TYPEHASH,
-                bountyId,
-                input.nonce,
-                input.recipient,
-                postParamsHash,
-                mirrorParamsHash,
-                followParamsHash
-            )
-        );
-    }
-
-    function hashNftSettleInput(uint256 bountyId, NftSettleInputQuote memory input) private pure returns (bytes32) {
-        (bytes32 quoteParamsHash) = hashLensInputs(input.quoteParams);
-        (bytes32 mirrorParamsHash, bytes32 followParamsHash) = hashLensInputs(input.mirrorParams, input.followParams);
-        return keccak256(
-            abi.encode(
-                NFT_SETTLE_INPUT_QUOTE_TYPEHASH,
-                bountyId,
-                input.nonce,
-                input.recipient,
-                quoteParamsHash,
-                mirrorParamsHash,
-                followParamsHash
-            )
-        );
-    }
-
-    function hashBidFromActionInput(uint256 bountyId, BidFromAction memory input) private pure returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                PAY_ONLY_INPUT_TYPEHASH, bountyId, input.bid, input.bidderCollectionId, input.recipient, input.revShare
-            )
-        );
-    }
-
-    /**
-     * @dev This is an internal function that encodes an array of `bytes` using EIP712 rules.
-     * @param bytesArray The array of `bytes` to encode.
-     */
-    function _encodeUsingEip712Rules(bytes[] memory bytesArray) internal pure returns (bytes32) {
-        bytes32[] memory bytesArrayEncodedElements = new bytes32[](bytesArray.length);
-        uint256 i;
-        while (i < bytesArray.length) {
-            // A `bytes` type is encoded as its keccak256 hash.
-            bytesArrayEncodedElements[i] = keccak256(bytesArray[i]);
-            unchecked {
-                ++i;
-            }
-        }
-        // An array is encoded as the keccak256 hash of the concatenation of their encoded elements.
-        return keccak256(abi.encodePacked(bytesArrayEncodedElements));
-    }
-
-    /**
      * @dev disperse funds to recipients
      * @param bountyId bounty to settle
      * @param data array of data with recipients, amounts, and rev share
      * @param fee uniswap v3 fee in case of rev share swap
      */
-    function _rankedSettle(uint256 bountyId, RankedSettleInput[] calldata data, uint24 fee) internal {
-        Bounty memory bounty = bounties[bountyId];
+    function _rankedSettle(uint256 bountyId, Structs.RankedSettleInput[] calldata data, uint24 fee) internal {
+        Structs.Bounty memory bounty = bounties[bountyId];
         if (bounty.collectionId != 0) {
             revert NFTBounty(bountyId);
         }
@@ -762,8 +448,8 @@ contract Bounties is Ownable, Constants {
      * @param data array of data with recipients, amounts, and rev share
      * @param fee uniswap v3 fee in case of rev share swap
      */
-    function _rankedSettle(uint256 bountyId, RankedSettleInputQuote[] calldata data, uint24 fee) internal {
-        Bounty memory bounty = bounties[bountyId];
+    function _rankedSettle(uint256 bountyId, Structs.RankedSettleInputQuote[] calldata data, uint24 fee) internal {
+        Structs.Bounty memory bounty = bounties[bountyId];
         if (bounty.collectionId != 0) {
             revert NFTBounty(bountyId);
         }
@@ -811,10 +497,13 @@ contract Bounties is Ownable, Constants {
      * @param data array of data with recipients, amounts, and rev share
      * @param fee uniswap v3 fee in case of rev share swap
      */
-    function _rankedSettleFromAction(uint256 bountyId, uint256 bidTotal, BidFromAction[] calldata data, uint24 fee)
-        internal
-    {
-        Bounty memory bounty = bounties[bountyId];
+    function _rankedSettleFromAction(
+        uint256 bountyId,
+        uint256 bidTotal,
+        Structs.BidFromAction[] calldata data,
+        uint24 fee
+    ) internal {
+        Structs.Bounty memory bounty = bounties[bountyId];
 
         uint256 newFees = calcFee(bidTotal);
         uint256 total = newFees + bidTotal;
@@ -845,8 +534,8 @@ contract Bounties is Ownable, Constants {
      * @param data array of data with recipients, amounts, and rev share
      * @param fee uniswap v3 fee in case of rev share swap
      */
-    function _rankedSettle(uint256 bountyId, BidFromAction[] calldata data, uint24 fee) internal {
-        Bounty memory bounty = bounties[bountyId];
+    function _rankedSettle(uint256 bountyId, Structs.BidFromAction[] calldata data, uint24 fee) internal {
+        Structs.Bounty memory bounty = bounties[bountyId];
         if (bounty.collectionId != 0) {
             revert NFTBounty(bountyId);
         }
@@ -935,9 +624,11 @@ contract Bounties is Ownable, Constants {
      * @param mirror mirror params data
      * @param follow follow params data
      */
-    function _doLens(Types.PostParams calldata post, Types.MirrorParams calldata mirror, FollowParams calldata follow)
-        internal
-    {
+    function _doLens(
+        Types.PostParams calldata post,
+        Types.MirrorParams calldata mirror,
+        Structs.FollowParams calldata follow
+    ) internal {
         lensHub.post(post);
         _doLens(mirror, follow);
     }
@@ -948,9 +639,11 @@ contract Bounties is Ownable, Constants {
      * @param mirror mirror params data
      * @param follow follow params data
      */
-    function _doLens(Types.QuoteParams calldata quote, Types.MirrorParams calldata mirror, FollowParams calldata follow)
-        internal
-    {
+    function _doLens(
+        Types.QuoteParams calldata quote,
+        Types.MirrorParams calldata mirror,
+        Structs.FollowParams calldata follow
+    ) internal {
         lensHub.quote(quote);
         _doLens(mirror, follow);
     }
@@ -960,7 +653,7 @@ contract Bounties is Ownable, Constants {
      * @param mirror mirror params data
      * @param follow follow params data
      */
-    function _doLens(Types.MirrorParams calldata mirror, FollowParams calldata follow) internal {
+    function _doLens(Types.MirrorParams calldata mirror, Structs.FollowParams calldata follow) internal {
         if (mirror.profileId != 0) {
             try lensHub.mirror(mirror) returns (uint256) {} catch {}
         }
@@ -969,10 +662,5 @@ contract Bounties is Ownable, Constants {
                 follow.followerProfileId, follow.idsOfProfilesToFollow, follow.followTokenIds, follow.datas
             ) returns (uint256[] memory) {} catch {}
         }
-    }
-
-    /// @notice fallback function to prevent accidental ether transfers
-    receive() external payable {
-        revert();
     }
 }

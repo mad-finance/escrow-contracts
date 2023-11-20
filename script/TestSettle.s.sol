@@ -19,7 +19,7 @@ contract TestSettle is Script {
             ? 0x385B33C3127d5AF5F74fB4193a8dFd86D9a4A166
             : 0xFa5f9e598777A2787ab16f8B306Ceb21156DDC06;
 
-        Bounties bounties = Bounties(payable(bountiesAddress));
+        Bounties bounties = Bounties(bountiesAddress);
 
         Types.PostParams memory post = Types.PostParams({
             profileId: 0x0333,
@@ -49,15 +49,15 @@ contract TestSettle is Script {
         bytes[] memory datas = new bytes[](2);
         datas[0] = "";
         datas[1] = "";
-        Bounties.FollowParams memory follow = Bounties.FollowParams({
+        Structs.FollowParams memory follow = Structs.FollowParams({
             followerProfileId: 0x0333,
             idsOfProfilesToFollow: profileIds,
             followTokenIds: followTokenIds,
             datas: datas
         });
 
-        Bounties.NftSettleInput[] memory input = new Bounties.NftSettleInput[](1);
-        input[0] = Bounties.NftSettleInput({
+        Structs.NftSettleInput[] memory input = new Structs.NftSettleInput[](1);
+        input[0] = Structs.NftSettleInput({
             nonce: 2,
             recipient: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8,
             signature: hex"fb9414e2b599f65a40f6616e3ccead083437c245d9e1219748fea034611b03da02317b0ac01fd0a17421b0cc85dcb737eb44d2e08558bd31b73ec4740fea2ebe1b",

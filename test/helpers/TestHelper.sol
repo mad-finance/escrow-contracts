@@ -79,7 +79,7 @@ contract TestHelper is Test, Constants {
         token.approve(address(bounties), type(uint256).max);
     }
 
-    function createSettleData(uint256 newBountyId) internal view returns (Bounties.RankedSettleInput[] memory) {
+    function createSettleData(uint256 newBountyId) internal view returns (Structs.RankedSettleInput[] memory) {
         Types.PostParams memory post = Types.PostParams({
             profileId: bidderProfileId,
             contentURI: "ipfs://123",
@@ -101,15 +101,15 @@ contract TestHelper is Test, Constants {
 
         uint256[] memory idsOfProfilesToFollow = new uint256[](1);
         idsOfProfilesToFollow[0] = 349;
-        Bounties.FollowParams memory follow = Bounties.FollowParams({
+        Structs.FollowParams memory follow = Structs.FollowParams({
             followerProfileId: bidderProfileId,
             idsOfProfilesToFollow: idsOfProfilesToFollow,
             followTokenIds: new uint256[](1),
             datas: new bytes[](1)
         });
 
-        Bounties.RankedSettleInput[] memory input = new Bounties.RankedSettleInput[](1);
-        input[0] = Bounties.RankedSettleInput({
+        Structs.RankedSettleInput[] memory input = new Structs.RankedSettleInput[](1);
+        input[0] = Structs.RankedSettleInput({
             bid: bidAmount1,
             bidderCollectionId: 0,
             recipient: bidderAddress,
@@ -127,7 +127,7 @@ contract TestHelper is Test, Constants {
     function createQuoteSettleData(uint256 newBountyId)
         internal
         view
-        returns (Bounties.RankedSettleInputQuote[] memory)
+        returns (Structs.RankedSettleInputQuote[] memory)
     {
         Types.QuoteParams memory quote = Types.QuoteParams({
             profileId: bidderProfileId,
@@ -155,15 +155,15 @@ contract TestHelper is Test, Constants {
 
         uint256[] memory idsOfProfilesToFollow = new uint256[](1);
         idsOfProfilesToFollow[0] = 349;
-        Bounties.FollowParams memory follow = Bounties.FollowParams({
+        Structs.FollowParams memory follow = Structs.FollowParams({
             followerProfileId: bidderProfileId,
             idsOfProfilesToFollow: idsOfProfilesToFollow,
             followTokenIds: new uint256[](1),
             datas: new bytes[](1)
         });
 
-        Bounties.RankedSettleInputQuote[] memory input = new Bounties.RankedSettleInputQuote[](1);
-        input[0] = Bounties.RankedSettleInputQuote({
+        Structs.RankedSettleInputQuote[] memory input = new Structs.RankedSettleInputQuote[](1);
+        input[0] = Structs.RankedSettleInputQuote({
             bid: bidAmount1,
             bidderCollectionId: 0,
             recipient: bidderAddress,
@@ -181,9 +181,9 @@ contract TestHelper is Test, Constants {
     function createSettleDataTwoBidders(uint256 newBountyId, uint256 revShare, uint256 bidderCollectionId)
         internal
         view
-        returns (Bounties.RankedSettleInput[] memory)
+        returns (Structs.RankedSettleInput[] memory)
     {
-        Bounties.RankedSettleInput[] memory input = new Bounties.RankedSettleInput[](2);
+        Structs.RankedSettleInput[] memory input = new Structs.RankedSettleInput[](2);
 
         // bidder 1
         Types.PostParams memory post1 = Types.PostParams({
@@ -207,14 +207,14 @@ contract TestHelper is Test, Constants {
 
         uint256[] memory idsOfProfilesToFollow1 = new uint256[](1);
         idsOfProfilesToFollow1[0] = 349;
-        Bounties.FollowParams memory follow1 = Bounties.FollowParams({
+        Structs.FollowParams memory follow1 = Structs.FollowParams({
             followerProfileId: bidderProfileId,
             idsOfProfilesToFollow: idsOfProfilesToFollow1,
             followTokenIds: new uint256[](1),
             datas: new bytes[](1)
         });
 
-        input[0] = Bounties.RankedSettleInput({
+        input[0] = Structs.RankedSettleInput({
             bid: bidAmount1,
             bidderCollectionId: bidderCollectionId,
             recipient: bidderAddress,
@@ -247,13 +247,13 @@ contract TestHelper is Test, Constants {
 
         uint256[] memory idsOfProfilesToFollow2 = new uint256[](1);
         idsOfProfilesToFollow2[0] = 349;
-        Bounties.FollowParams memory follow2 = Bounties.FollowParams({
+        Structs.FollowParams memory follow2 = Structs.FollowParams({
             followerProfileId: bidderProfileId2,
             idsOfProfilesToFollow: idsOfProfilesToFollow2,
             followTokenIds: new uint256[](1),
             datas: new bytes[](1)
         });
-        input[1] = Bounties.RankedSettleInput({
+        input[1] = Structs.RankedSettleInput({
             bid: bidAmount2,
             bidderCollectionId: bidderCollectionId,
             recipient: bidderAddress2,
@@ -275,9 +275,9 @@ contract TestHelper is Test, Constants {
     function createNftSettleDataTwoBidders(uint256 newBountyId)
         internal
         view
-        returns (Bounties.NftSettleInput[] memory)
+        returns (Structs.NftSettleInput[] memory)
     {
-        Bounties.NftSettleInput[] memory input = new Bounties.NftSettleInput[](2);
+        Structs.NftSettleInput[] memory input = new Structs.NftSettleInput[](2);
 
         // bidder 1
         Types.PostParams memory post1 = Types.PostParams({
@@ -301,14 +301,14 @@ contract TestHelper is Test, Constants {
 
         uint256[] memory idsOfProfilesToFollow1 = new uint256[](1);
         idsOfProfilesToFollow1[0] = 349;
-        Bounties.FollowParams memory follow1 = Bounties.FollowParams({
+        Structs.FollowParams memory follow1 = Structs.FollowParams({
             followerProfileId: bidderProfileId,
             idsOfProfilesToFollow: idsOfProfilesToFollow1,
             followTokenIds: new uint256[](1),
             datas: new bytes[](1)
         });
 
-        input[0] = Bounties.NftSettleInput({
+        input[0] = Structs.NftSettleInput({
             nonce: bounties.nftSettleNonces(newBountyId, bidderAddress),
             recipient: bidderAddress,
             signature: "",
@@ -339,13 +339,13 @@ contract TestHelper is Test, Constants {
 
         uint256[] memory idsOfProfilesToFollow2 = new uint256[](1);
         idsOfProfilesToFollow2[0] = 349;
-        Bounties.FollowParams memory follow2 = Bounties.FollowParams({
+        Structs.FollowParams memory follow2 = Structs.FollowParams({
             followerProfileId: bidderProfileId2,
             idsOfProfilesToFollow: idsOfProfilesToFollow2,
             followTokenIds: new uint256[](1),
             datas: new bytes[](1)
         });
-        input[1] = Bounties.NftSettleInput({
+        input[1] = Structs.NftSettleInput({
             nonce: bounties.nftSettleNonces(newBountyId, bidderAddress2),
             recipient: bidderAddress2,
             signature: "",
@@ -365,9 +365,9 @@ contract TestHelper is Test, Constants {
     function createNftSettleDataQuote(uint256 newBountyId)
         internal
         view
-        returns (Bounties.NftSettleInputQuote[] memory)
+        returns (Structs.NftSettleInputQuote[] memory)
     {
-        Bounties.NftSettleInputQuote[] memory input = new Bounties.NftSettleInputQuote[](1);
+        Structs.NftSettleInputQuote[] memory input = new Structs.NftSettleInputQuote[](1);
 
         Types.QuoteParams memory quote = Types.QuoteParams({
             profileId: bidderProfileId,
@@ -395,14 +395,14 @@ contract TestHelper is Test, Constants {
 
         uint256[] memory idsOfProfilesToFollow1 = new uint256[](1);
         idsOfProfilesToFollow1[0] = 349;
-        Bounties.FollowParams memory follow1 = Bounties.FollowParams({
+        Structs.FollowParams memory follow1 = Structs.FollowParams({
             followerProfileId: bidderProfileId,
             idsOfProfilesToFollow: idsOfProfilesToFollow1,
             followTokenIds: new uint256[](1),
             datas: new bytes[](1)
         });
 
-        input[0] = Bounties.NftSettleInputQuote({
+        input[0] = Structs.NftSettleInputQuote({
             nonce: bounties.nftSettleNonces(newBountyId, bidderAddress),
             recipient: bidderAddress,
             signature: "",
@@ -419,12 +419,12 @@ contract TestHelper is Test, Constants {
     function createPayOnlySettleDataTwoBidders(uint256 newBountyId, uint256 revShare)
         internal
         view
-        returns (Bounties.BidFromAction[] memory, bytes[] memory)
+        returns (Structs.BidFromAction[] memory, bytes[] memory)
     {
-        Bounties.BidFromAction[] memory input = new Bounties.BidFromAction[](2);
+        Structs.BidFromAction[] memory input = new Structs.BidFromAction[](2);
 
         // bidder 1
-        input[0] = Bounties.BidFromAction({
+        input[0] = Structs.BidFromAction({
             bid: bidAmount1,
             recipient: bidderAddress,
             revShare: revShare,
@@ -432,7 +432,7 @@ contract TestHelper is Test, Constants {
         });
 
         // bidder 2
-        input[1] = Bounties.BidFromAction({
+        input[1] = Structs.BidFromAction({
             bid: bidAmount2,
             recipient: bidderAddress2,
             revShare: revShare,
@@ -444,7 +444,7 @@ contract TestHelper is Test, Constants {
         return (input, signatures);
     }
 
-    function createSignatures(uint256 bountyId, Bounties.RankedSettleInput[] memory data)
+    function createSignatures(uint256 bountyId, Structs.RankedSettleInput[] memory data)
         internal
         view
         returns (bytes[] memory)
@@ -466,7 +466,7 @@ contract TestHelper is Test, Constants {
         return signatures;
     }
 
-    function createSignatures(uint256 bountyId, Bounties.RankedSettleInputQuote[] memory data)
+    function createSignatures(uint256 bountyId, Structs.RankedSettleInputQuote[] memory data)
         internal
         view
         returns (bytes[] memory)
@@ -488,7 +488,7 @@ contract TestHelper is Test, Constants {
         return signatures;
     }
 
-    function createSignatures(uint256 bountyId, Bounties.NftSettleInput[] memory data)
+    function createSignatures(uint256 bountyId, Structs.NftSettleInput[] memory data)
         internal
         view
         returns (bytes[] memory)
@@ -510,7 +510,7 @@ contract TestHelper is Test, Constants {
         return signatures;
     }
 
-    function createSignatures(uint256 bountyId, Bounties.NftSettleInputQuote[] memory data)
+    function createSignatures(uint256 bountyId, Structs.NftSettleInputQuote[] memory data)
         internal
         view
         returns (bytes[] memory)
@@ -532,7 +532,7 @@ contract TestHelper is Test, Constants {
         return signatures;
     }
 
-    function createSignatures(uint256 bountyId, Bounties.BidFromAction[] memory data)
+    function createSignatures(uint256 bountyId, Structs.BidFromAction[] memory data)
         internal
         view
         returns (bytes[] memory)
@@ -610,7 +610,7 @@ contract TestHelper is Test, Constants {
         );
     }
 
-    function hashLensInputs(Types.MirrorParams memory mirrorParams, Bounties.FollowParams memory followParams)
+    function hashLensInputs(Types.MirrorParams memory mirrorParams, Structs.FollowParams memory followParams)
         private
         pure
         returns (bytes32 mirrorParamsHash, bytes32 followParamsHash)
@@ -639,7 +639,11 @@ contract TestHelper is Test, Constants {
         );
     }
 
-    function hashRankedSettleInput(uint256 bountyId, Bounties.RankedSettleInput memory input) private pure returns (bytes32) {
+    function hashRankedSettleInput(uint256 bountyId, Structs.RankedSettleInput memory input)
+        private
+        pure
+        returns (bytes32)
+    {
         (bytes32 postParamsHash) = hashLensInputs(input.postParams);
         (bytes32 mirrorParamsHash, bytes32 followParamsHash) = hashLensInputs(input.mirrorParams, input.followParams);
         return keccak256(
@@ -657,7 +661,7 @@ contract TestHelper is Test, Constants {
         );
     }
 
-    function hashRankedSettleInput(uint256 bountyId, Bounties.RankedSettleInputQuote memory input)
+    function hashRankedSettleInput(uint256 bountyId, Structs.RankedSettleInputQuote memory input)
         private
         pure
         returns (bytes32)
@@ -679,7 +683,7 @@ contract TestHelper is Test, Constants {
         );
     }
 
-    function hashNftSettleInput(uint256 bountyId, Bounties.NftSettleInput memory input) private pure returns (bytes32) {
+    function hashNftSettleInput(uint256 bountyId, Structs.NftSettleInput memory input) private pure returns (bytes32) {
         (bytes32 postParamsHash) = hashLensInputs(input.postParams);
         (bytes32 mirrorParamsHash, bytes32 followParamsHash) = hashLensInputs(input.mirrorParams, input.followParams);
         return keccak256(
@@ -695,7 +699,11 @@ contract TestHelper is Test, Constants {
         );
     }
 
-    function hashNftSettleInput(uint256 bountyId, Bounties.NftSettleInputQuote memory input) private pure returns (bytes32) {
+    function hashNftSettleInput(uint256 bountyId, Structs.NftSettleInputQuote memory input)
+        private
+        pure
+        returns (bytes32)
+    {
         (bytes32 quoteParamsHash) = hashLensInputs(input.quoteParams);
         (bytes32 mirrorParamsHash, bytes32 followParamsHash) = hashLensInputs(input.mirrorParams, input.followParams);
         return keccak256(
@@ -711,7 +719,11 @@ contract TestHelper is Test, Constants {
         );
     }
 
-    function hashBidFromActionInput(uint256 bountyId, Bounties.BidFromAction memory input) private pure returns (bytes32) {
+    function hashBidFromActionInput(uint256 bountyId, Structs.BidFromAction memory input)
+        private
+        pure
+        returns (bytes32)
+    {
         return keccak256(
             abi.encode(
                 PAY_ONLY_INPUT_TYPEHASH, bountyId, input.bid, input.bidderCollectionId, input.recipient, input.revShare
@@ -722,12 +734,12 @@ contract TestHelper is Test, Constants {
     function createBidFromActionParam(address[] memory recipients, uint256[] memory bids, uint256[] memory revShares)
         internal
         pure
-        returns (Bounties.BidFromAction[] memory)
+        returns (Structs.BidFromAction[] memory)
     {
-        Bounties.BidFromAction[] memory data = new Bounties.BidFromAction[](recipients.length);
+        Structs.BidFromAction[] memory data = new Structs.BidFromAction[](recipients.length);
         uint256 i;
         while (i < recipients.length) {
-            data[i] = Bounties.BidFromAction({
+            data[i] = Structs.BidFromAction({
                 recipient: recipients[i],
                 bid: bids[i],
                 revShare: revShares[i],

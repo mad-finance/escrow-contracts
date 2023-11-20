@@ -20,6 +20,9 @@ import "openzeppelin/token/ERC1155/extensions/ERC1155Supply.sol";
 import "openzeppelin/access/Ownable.sol";
 import "./interfaces/IRewardNft.sol";
 
+/**
+ * @dev This contract is used to mint and track reward NFTs
+ */
 contract RewardNft is Ownable, ERC1155Supply, IRewardNft {
     address bounties;
     uint256 collectionsCount;
