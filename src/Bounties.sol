@@ -24,6 +24,7 @@ import {RevShare} from "madfi-protocol/libraries/RevShare.sol";
 
 import "./libraries/VerifySignatures.sol";
 import "./interfaces/IRewardNft.sol";
+import "./interfaces/ISocialClubReferrals.sol";
 
 /**
  * @dev This contract handles the creation and settlement of bounties
@@ -39,6 +40,7 @@ contract Bounties is Ownable, VerifySignatures {
 
     IRewardNft private rewardNft;
     address private publicationAction;
+    ISocialClubReferrals private referralHandler;
 
     address private swapRouter;
     ILensProtocol private lensHub;
@@ -418,14 +420,13 @@ contract Bounties is Ownable, VerifySignatures {
             }
         }
 
-        uint256 newFees = calcFee(bidTotal);
-        uint256 total = newFees + bidTotal;
+        uint256 protocolFees = calcFee(bidTotal);
+        uint256 total = protocolFees + bidTotal;
         if (total > bounty.amount) {
             revert InvalidBidTotal(total);
         }
 
         bounties[bountyId].amount -= total;
-        feesEarned[bounty.token] += newFees;
 
         IERC20 token = IERC20(bounty.token);
         i = 0;
@@ -433,11 +434,14 @@ contract Bounties is Ownable, VerifySignatures {
         while (i < data.length) {
             _bidPayment(token, data[i].recipient, data[i].bid, data[i].revShare, data[i].bidderCollectionId, fee);
             awardBadgePoints(sponsorCollectionId, data[i].recipient);
+            protocolFees -= _handleReferral(protocolFees, token, data[i].recipient, data[i].bid, bidTotal);
 
             unchecked {
                 ++i;
             }
         }
+
+        feesEarned[bounty.token] += protocolFees;
 
         emit BountyPayments(bountyId, bidTotal);
     }
@@ -466,26 +470,28 @@ contract Bounties is Ownable, VerifySignatures {
             }
         }
 
-        uint256 newFees = calcFee(bidTotal);
-        uint256 total = newFees + bidTotal;
+        uint256 protocolFees = calcFee(bidTotal);
+        uint256 total = protocolFees + bidTotal;
         if (total > bounty.amount) {
             revert InvalidBidTotal(total);
         }
 
         bounties[bountyId].amount -= total;
-        feesEarned[bounty.token] += newFees;
 
         IERC20 token = IERC20(bounty.token);
         i = 0;
         uint256 sponsorCollectionId = bounty.sponsorCollectionId;
         while (i < data.length) {
             _bidPayment(token, data[i].recipient, data[i].bid, data[i].revShare, data[i].bidderCollectionId, fee);
+            protocolFees -= _handleReferral(protocolFees, token, data[i].recipient, data[i].bid, bidTotal);
             awardBadgePoints(sponsorCollectionId, data[i].recipient);
 
             unchecked {
                 ++i;
             }
         }
+
+        feesEarned[bounty.token] += protocolFees;
 
         emit BountyPayments(bountyId, bidTotal);
     }
@@ -505,25 +511,27 @@ contract Bounties is Ownable, VerifySignatures {
     ) internal {
         Structs.Bounty memory bounty = bounties[bountyId];
 
-        uint256 newFees = calcFee(bidTotal);
-        uint256 total = newFees + bidTotal;
+        uint256 protocolFees = calcFee(bidTotal);
+        uint256 total = protocolFees + bidTotal;
         if (total > bounty.amount) {
             revert InvalidBidTotal(total);
         }
 
         bounties[bountyId].amount -= total;
-        feesEarned[bounty.token] += newFees;
 
         IERC20 token = IERC20(bounty.token);
         uint256 sponsorCollectionId = bounty.sponsorCollectionId;
         for (uint256 i = 0; i < data.length;) {
             _bidPayment(token, data[i].recipient, data[i].bid, data[i].revShare, data[i].bidderCollectionId, fee);
+            protocolFees -= _handleReferral(protocolFees, token, data[i].recipient, data[i].bid, bidTotal);
             awardBadgePoints(sponsorCollectionId, data[i].recipient);
 
             unchecked {
                 i++;
             }
         }
+
+        feesEarned[bounty.token] += protocolFees;
 
         emit BountyPayments(bountyId, bidTotal);
     }
@@ -662,5 +670,30 @@ contract Bounties is Ownable, VerifySignatures {
                 follow.followerProfileId, follow.idsOfProfilesToFollow, follow.followTokenIds, follow.datas
             ) returns (uint256[] memory) {} catch {}
         }
+    }
+
+    /**
+     * @dev Handles any referral (on badge creation or by other clients) by calculating the referral amount, then
+     * distributing, and removing that amount from the protocolFeeAmount to store in this contract
+     */
+    function _handleReferral(
+        uint256 protocolFeeAmount,
+        IERC20 token,
+        address bidder,
+        uint256 bidAmount,
+        uint256 bidTotal
+    ) internal returns (uint256) {
+        uint256 protocolFeeShare = (bidAmount / bidTotal) * protocolFeeAmount;
+
+        (
+            address referrer,
+            uint256 referralAmount
+        ) = referralHandler.processBountyWithBadgeCreator(bidder, protocolFeeShare, address(token));
+
+        if (referralAmount > 0 && referrer != address(0)) {
+            token.transfer(referrer, referralAmount);
+        }
+
+        return referralAmount;
     }
 }
