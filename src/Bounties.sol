@@ -30,13 +30,18 @@ import "./interfaces/ISocialClubReferrals.sol";
  * @dev This contract handles the creation and settlement of bounties
  */
 contract Bounties is Ownable, VerifySignatures {
-    uint256 public protocolFee; // basis points
+    uint256 public protocolFee; // bps
+    uint256 public referralFee; // bps
     mapping(address => uint256) public feesEarned;
+    mapping(address => uint256) public transactionExecutorFeesEarned;
 
     uint256 public count;
     mapping(uint256 => Structs.Bounty) public bounties;
 
     mapping(uint256 => mapping(address => uint256)) public nftSettleNonces; // bountyId => recipient => nonces
+
+    // third-party clients that wish to earn referral fees must be whitelisted
+    mapping(address => bool) public whitelistedTransactionExecutors; // transactionExecutor => isWhitelisted
 
     IRewardNft private rewardNft;
     address private publicationAction;
@@ -61,6 +66,7 @@ contract Bounties is Ownable, VerifySignatures {
     event SetMadSBT(address _madSBT, uint256 _collectionId, uint256 _profileId);
     event SetRewardNft(address _rewardNft);
     event SetPublicationAction(address _publicationAction);
+    event SetWhitelistedTransactionExecutor(address transactionExecutor, bool isWhitelisted);
 
     /* ERRORS */
     error NotArbiter(address sender);
@@ -350,6 +356,12 @@ contract Bounties is Ownable, VerifySignatures {
         emit SetProtocolFee(_protocolFee);
     }
 
+    /// @notice sets the transaction executor referral fee (bps) to be taken from the protocol fee, given to third-party
+    /// clients that submit a winning bid from the open action
+    function setReferralFee(uint256 _referralFee) external onlyOwner {
+        referralFee = _referralFee;
+    }
+
     /// @notice withdraws all accumulated fees denominated in the specified tokens to the owner
     function withdrawFees(address[] calldata _tokens) external onlyOwner {
         for (uint256 i = 0; i < _tokens.length;) {
@@ -392,6 +404,16 @@ contract Bounties is Ownable, VerifySignatures {
     function setPublicationActionModule(address _publicationAction) external onlyOwner {
         publicationAction = _publicationAction;
         emit SetPublicationAction(_publicationAction);
+    }
+
+    /**
+     * @notice sets a whitelisted third-party client
+     * @param _transactionExecutor the address of the client that submits the lens #act txs
+     * @param
+     */
+    function setWhitelistedTransactionExecutor(address transactionExecutor, bool whitelisted) external onlyOwner {
+        whitelistedTransactionExecutors[transactionExecutor] = whitelisted;
+        emit SetWhitelistedTransactionExecutor(transactionExecutor, whitelisted);
     }
 
     /* INTERNAL FUNCTIONS */
@@ -447,7 +469,7 @@ contract Bounties is Ownable, VerifySignatures {
     }
 
     /**
-     * @dev disperse funds to recipients
+     * @dev disperse funds to recipients, handle creator referrals, and award points on the sponsor badge
      * @param bountyId bounty to settle
      * @param data array of data with recipients, amounts, and rev share
      * @param fee uniswap v3 fee in case of rev share swap
@@ -497,7 +519,7 @@ contract Bounties is Ownable, VerifySignatures {
     }
 
     /**
-     * @dev disperse funds to recipients
+     * @dev disperse funds to recipients, handle creator AND client referrals, and award points on the sponsor badge
      * @param bountyId bounty to settle
      * @param bidTotal total amount to disburse
      * @param data array of data with recipients, amounts, and rev share
@@ -524,6 +546,7 @@ contract Bounties is Ownable, VerifySignatures {
         for (uint256 i = 0; i < data.length;) {
             _bidPayment(token, data[i].recipient, data[i].bid, data[i].revShare, data[i].bidderCollectionId, fee);
             protocolFees -= _handleReferral(protocolFees, token, data[i].recipient, data[i].bid, bidTotal);
+            protocolFees -= _handleClientReferral(protocolFees, token, data[i].targetExecutor, data[i].bid, bidTotal);
             awardBadgePoints(sponsorCollectionId, data[i].recipient);
 
             unchecked {
@@ -674,7 +697,13 @@ contract Bounties is Ownable, VerifySignatures {
 
     /**
      * @dev Handles any referral (on badge creation or by other clients) by calculating the referral amount, then
-     * distributing, and removing that amount from the protocolFeeAmount to store in this contract
+     * distributing it to the referrer
+     * @param protocolFeeAmount The total amount in protocol fees
+     * @param token The bounty token
+     * @param bidder The bidder address getting paid out
+     * @param bidAmount The bidder amount
+     * @param bidTotal The total bid amount for the bounty
+     * @return uint256 The amount paid to the referrer
      */
     function _handleReferral(
         uint256 protocolFeeAmount,
@@ -695,5 +724,31 @@ contract Bounties is Ownable, VerifySignatures {
         }
 
         return referralAmount;
+    }
+
+    /**
+     * @dev Handles client referrals by calculating the referral amount and storing it for them to claim
+     * @param protocolFeeAmount The total amount in protocol fees
+     * @param token The bounty token
+     * @param targetExecutor The target executor of the lens #act that submitted the bid
+     * @param bidAmount The bidder amount
+     * @param bidTotal The total bid amount for the bounty
+     * @return uint256 The amount paid to the referrer
+     */
+    function _handleClientReferral(
+        uint256 protocolFeeAmount,
+        IERC20 token,
+        address targetExecutor,
+        uint256 bidAmount,
+        uint256 bidTotal
+    ) internal returns (uint256) {
+        if (referralFee == 0 || !whitelistedTransactionExecutors[targetExecutor]) return 0;
+
+        uint256 protocolFeeShare = (bidAmount / bidTotal) * protocolFeeAmount;
+        uint256 referralFeeShare = (protocolFeeShare * referralFee) / 10_000;
+
+        transactionExecutorFeesEarned[targetExecutor] += referralFeeShare;
+
+        return referralFeeShare;
     }
 }
