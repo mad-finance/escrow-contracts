@@ -12,12 +12,13 @@ import "openzeppelin/token/ERC20/ERC20.sol";
 import "madfi-protocol/interfaces/ISuperToken.sol";
 
 import "../../src/Bounties.sol";
-import "../../src/RewardNft.sol";
+import {RewardNft} from "../../src/RewardNft.sol";
 import "../../src/libraries/Constants.sol";
 
 import "../../src/mocks/MockMadSBT.sol";
 import "../../src/mocks/MockRouter.sol";
 import "../../src/mocks/MockSuperToken.sol";
+import "../../src/mocks/MockReferralHandler.sol";
 
 interface ILensHubTest {
     function changeDelegatedExecutorsConfig(
@@ -35,6 +36,7 @@ contract TestHelper is Test, Constants {
     Bounties bounties;
     RewardNft rewardNft;
     MockMadSBT mockMadSBT;
+    MockReferralHandler mockReferralHandler;
 
     address swapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564; // uniswap swap router
 
@@ -64,8 +66,9 @@ contract TestHelper is Test, Constants {
         vm.selectFork(polygonFork);
 
         mockMadSBT = new MockMadSBT(address(superUsdc));
+        mockReferralHandler = new MockReferralHandler();
 
-        bounties = new Bounties(lensHub, 0, 0, address(swapRouter));
+        bounties = new Bounties(lensHub, 0, 0, address(swapRouter), address(mockReferralHandler));
         rewardNft = new RewardNft(address(bounties));
 
         bounties.setMadSBT(address(mockMadSBT), 1, 1);
@@ -427,6 +430,7 @@ contract TestHelper is Test, Constants {
         input[0] = Structs.BidFromAction({
             bid: bidAmount1,
             recipient: bidderAddress,
+            transactionExecutor: address(0),
             revShare: revShare,
             bidderCollectionId: 0
         });
@@ -435,6 +439,7 @@ contract TestHelper is Test, Constants {
         input[1] = Structs.BidFromAction({
             bid: bidAmount2,
             recipient: bidderAddress2,
+            transactionExecutor: address(0),
             revShare: revShare,
             bidderCollectionId: 0
         });
@@ -741,6 +746,7 @@ contract TestHelper is Test, Constants {
         while (i < recipients.length) {
             data[i] = Structs.BidFromAction({
                 recipient: recipients[i],
+                transactionExecutor: address(0),
                 bid: bids[i],
                 revShare: revShares[i],
                 bidderCollectionId: 0

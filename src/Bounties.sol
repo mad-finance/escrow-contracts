@@ -81,11 +81,12 @@ contract Bounties is Ownable, VerifySignatures {
     }
 
     /* CONSTRUCTOR */
-    constructor(address _lensHub, uint256 _protocolFee, uint256 _startId, address _swapRouter) Ownable() {
+    constructor(address _lensHub, uint256 _protocolFee, uint256 _startId, address _swapRouter, address _referralHandler) Ownable() {
         protocolFee = _protocolFee;
         count = _startId;
         swapRouter = _swapRouter;
         lensHub = ILensProtocol(_lensHub);
+        referralHandler = ISocialClubReferrals(_referralHandler);
     }
 
     /* PUBLIC FUNCTIONS */
@@ -408,8 +409,8 @@ contract Bounties is Ownable, VerifySignatures {
 
     /**
      * @notice sets a whitelisted third-party client
-     * @param _transactionExecutor the address of the client that submits the lens #act txs
-     * @param
+     * @param transactionExecutor the address of the client that submits the lens #act txs
+     * @param whitelisted whether or not the client is whitelisted
      */
     function setWhitelistedTransactionExecutor(address transactionExecutor, bool whitelisted) external onlyOwner {
         whitelistedTransactionExecutors[transactionExecutor] = whitelisted;
@@ -546,7 +547,7 @@ contract Bounties is Ownable, VerifySignatures {
         for (uint256 i = 0; i < data.length;) {
             _bidPayment(token, data[i].recipient, data[i].bid, data[i].revShare, data[i].bidderCollectionId, fee);
             protocolFees -= _handleReferral(protocolFees, token, data[i].recipient, data[i].bid, bidTotal);
-            protocolFees -= _handleClientReferral(protocolFees, token, data[i].targetExecutor, data[i].bid, bidTotal);
+            protocolFees -= _handleClientReferral(protocolFees, data[i].transactionExecutor, data[i].bid, bidTotal);
             awardBadgePoints(sponsorCollectionId, data[i].recipient);
 
             unchecked {
@@ -714,10 +715,8 @@ contract Bounties is Ownable, VerifySignatures {
     ) internal returns (uint256) {
         uint256 protocolFeeShare = (bidAmount / bidTotal) * protocolFeeAmount;
 
-        (
-            address referrer,
-            uint256 referralAmount
-        ) = referralHandler.processBountyWithBadgeCreator(bidder, protocolFeeShare, address(token));
+        (address referrer, uint256 referralAmount) =
+            referralHandler.processBountyWithBadgeCreator(bidder, protocolFeeShare, address(token));
 
         if (referralAmount > 0 && referrer != address(0)) {
             token.transfer(referrer, referralAmount);
@@ -729,7 +728,6 @@ contract Bounties is Ownable, VerifySignatures {
     /**
      * @dev Handles client referrals by calculating the referral amount and storing it for them to claim
      * @param protocolFeeAmount The total amount in protocol fees
-     * @param token The bounty token
      * @param targetExecutor The target executor of the lens #act that submitted the bid
      * @param bidAmount The bidder amount
      * @param bidTotal The total bid amount for the bounty
@@ -737,7 +735,6 @@ contract Bounties is Ownable, VerifySignatures {
      */
     function _handleClientReferral(
         uint256 protocolFeeAmount,
-        IERC20 token,
         address targetExecutor,
         uint256 bidAmount,
         uint256 bidTotal

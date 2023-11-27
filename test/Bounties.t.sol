@@ -172,7 +172,7 @@ contract BountiesTest is TestHelper {
         uint256 protocolFee = 0;
         uint256 bountyAmount = 100_000_000;
         vm.startPrank(defaultSender);
-        bounties = new Bounties(lensHub, protocolFee, 0, address(swapRouter));
+        bounties = new Bounties(lensHub, protocolFee, 0, address(swapRouter), address(mockReferralHandler));
         bounties.setMadSBT(address(mockMadSBT), 1, 1);
         vm.stopPrank();
 
@@ -223,7 +223,7 @@ contract BountiesTest is TestHelper {
         uint256 protocolFee = 500;
         uint256 bountyAmount = 100_000_000;
         vm.startPrank(defaultSender);
-        bounties = new Bounties(lensHub, protocolFee, 0, address(swapRouter));
+        bounties = new Bounties(lensHub, protocolFee, 0, address(swapRouter), address(mockReferralHandler));
         bounties.setMadSBT(address(mockMadSBT), 1, 1);
         vm.stopPrank();
 
