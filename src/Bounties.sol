@@ -31,7 +31,7 @@ import "./interfaces/ISocialClubReferrals.sol";
  */
 contract Bounties is Ownable, VerifySignatures {
     uint256 public protocolFee; // bps
-    uint256 public referralFee; // bps
+    uint256 public referralFee; // bps, what clients earn from the protocol fee amount
     mapping(address => uint256) public feesEarned;
     mapping(address => uint256) public transactionExecutorFeesEarned;
 
@@ -347,6 +347,14 @@ contract Bounties is Ownable, VerifySignatures {
      */
     function calcFee(uint256 amount) public view returns (uint256) {
         return (amount * protocolFee) / 10_000;
+    }
+
+    /**
+     * @notice calculates the fee to be paid for client referrals, from the protocol fee
+     * @param amount token amount to calculate fee for
+     */
+    function calcReferralFee(uint256 amount) public view returns (uint256) {
+        return (calcFee(amount) * referralFee) / 10_000;
     }
 
     /* ADMIN FUNCTIONS */
@@ -697,8 +705,7 @@ contract Bounties is Ownable, VerifySignatures {
     }
 
     /**
-     * @dev Handles any referral (on badge creation or by other clients) by calculating the referral amount, then
-     * distributing it to the referrer
+     * @dev Handles creator referrals by calculating the referral amount, then distributing it to the referrer
      * @param protocolFeeAmount The total amount in protocol fees
      * @param token The bounty token
      * @param bidder The bidder address getting paid out
@@ -713,7 +720,7 @@ contract Bounties is Ownable, VerifySignatures {
         uint256 bidAmount,
         uint256 bidTotal
     ) internal returns (uint256) {
-        uint256 protocolFeeShare = (bidAmount / bidTotal) * protocolFeeAmount;
+        uint256 protocolFeeShare = ((bidAmount / bidTotal) * protocolFeeAmount) / 10_000;
 
         (address referrer, uint256 referralAmount) =
             referralHandler.processBountyWithBadgeCreator(bidder, protocolFeeShare, address(token));
