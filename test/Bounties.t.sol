@@ -97,51 +97,81 @@ contract BountiesTest is TestHelper {
     }
 
     function testSettleRankedBountyFromAction() public {
+        // enable action module
         address openAction = address(70);
-
         bounties.setPublicationActionModule(openAction);
 
+        // set protocol fee (required for referral fee)
+        uint256 protocolFee = 500;
+        bounties.setProtocolFee(protocolFee);
+
+        // set referral fee - 5000 = 50%
+        uint256 referralFee = 5000;
+        bounties.setReferralFee(referralFee);
+
+        // whitelist client referral
+        bounties.setWhitelistedTransactionExecutor(client, true);
+
+        // begin test
         vm.startPrank(openAction);
         uint256 bountyAmount = 100_000_000;
-        helperMintApproveTokens(bountyAmount, openAction, usdc);
-        uint256 tokenAmountBefore = usdc.balanceOf(openAction);
+        uint256 bountyTotal = bountyAmount + (protocolFee * bountyAmount / 10_000);
+        helperMintApproveTokens(bountyTotal, openAction, usdc);
 
-        uint256 newBountyId = bounties.depositFromAction(defaultSender, address(usdc), bountyAmount, 0);
+        {
+            uint256 newBountyId = bounties.depositFromAction(defaultSender, address(usdc), bountyTotal, 0);
 
-        address[] memory recipients = new address[](2);
-        recipients[0] = bidderAddress;
-        recipients[1] = bidderAddress2;
+            address[] memory recipients = new address[](2);
+            recipients[0] = bidderAddress;
+            recipients[1] = bidderAddress2;
 
-        uint256[] memory bids = new uint256[](2);
-        bids[0] = bidAmount1;
-        bids[1] = bidAmount2;
+            uint256[] memory bids = new uint256[](2);
+            bids[0] = bidAmount1;
+            bids[1] = bidAmount2;
 
-        uint256[] memory revShares = new uint256[](2);
-        revShares[0] = 0;
-        revShares[1] = 0;
+            uint256[] memory revShares = new uint256[](2);
+            revShares[0] = 0;
+            revShares[1] = 0;
 
-        Structs.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
+            Structs.BidFromAction[] memory data = createBidFromActionParam(recipients, bids, revShares);
 
-        Structs.RankedSettleFromActionInput memory input = Structs.RankedSettleFromActionInput({
-            bountyId: newBountyId,
-            bidTotal: bidAmount1 + bidAmount2,
-            data: data,
-            postParams: new Types.PostParams[](0),
-            fee: 500
-        });
+            Structs.RankedSettleFromActionInput memory input = Structs.RankedSettleFromActionInput({
+                bountyId: newBountyId,
+                bidTotal: bidAmount1 + bidAmount2,
+                data: data,
+                postParams: new Types.PostParams[](0),
+                fee: 500
+            });
 
-        bounties.rankedSettleFromAction(input);
-        vm.stopPrank();
-        vm.prank(defaultSender);
-        bounties.close(newBountyId);
+            bounties.rankedSettleFromAction(input);
+            vm.stopPrank();
+            vm.prank(defaultSender);
+            bounties.close(newBountyId);
+        }
 
-        uint256 expected1 = bidAmount1;
-        uint256 expected2 = bidAmount2;
-        uint256 expected3 = tokenAmountBefore - expected1 - expected2;
-        assertEq(usdc.balanceOf(bidderAddress), expected1, "Bidder 1 balance is not correct");
-        assertEq(usdc.balanceOf(bidderAddress2), expected2, "Bidder 2 balance is not correct");
-        assertEq(usdc.balanceOf(defaultSender), expected3, "Sponsor balance is not correct");
-        assertEq(usdc.balanceOf(openAction), 0, "Open Action balance is not correct");
+        {
+            uint256 expected1 = bidAmount1;
+            uint256 expected2 = bidAmount2;
+            uint256 expected3 = bountyTotal - (expected1 + (protocolFee * expected1 / 10_000))
+                - (expected2 + (protocolFee * expected2 / 10_000));
+            assertEq(usdc.balanceOf(bidderAddress), expected1, "Bidder 1 balance is not correct");
+            assertEq(usdc.balanceOf(bidderAddress2), expected2, "Bidder 2 balance is not correct");
+            assertEq(usdc.balanceOf(defaultSender), expected3, "Sponsor balance is not correct");
+            assertEq(usdc.balanceOf(openAction), 0, "Open Action balance is not correct");
+        }
+
+        // check client referral reward
+        {
+            address[] memory tokens = new address[](1);
+            tokens[0] = address(usdc);
+            vm.prank(client);
+            bounties.withdrawClientReferrals(tokens);
+            assertEq(
+                usdc.balanceOf(client),
+                protocolFee * (bidAmount1 + bidAmount2) / 10_000 / 2,
+                "Referral reward is not correct"
+            );
+        }
     }
 
     function testSettleRankedBountyPayOnly() public {
@@ -179,7 +209,7 @@ contract BountiesTest is TestHelper {
         setDelegatedExecutors(address(bounties));
 
         vm.startPrank(defaultSender);
-        helperMintApproveTokens(bountyAmount + ((protocolFee * bountyAmount) / 10_000), defaultSender, usdc);
+        helperMintApproveTokens(bountyAmount + (protocolFee * bountyAmount / 10_000), defaultSender, usdc);
         uint256 beforeBal = usdc.balanceOf(defaultSender);
 
         uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount, 0);

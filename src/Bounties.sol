@@ -33,7 +33,7 @@ contract Bounties is Ownable, VerifySignatures {
     uint256 public protocolFee; // bps
     uint256 public referralFee; // bps, what clients earn from the protocol fee amount
     mapping(address => uint256) public feesEarned;
-    mapping(address => uint256) public transactionExecutorFeesEarned;
+    mapping(address => mapping(address => uint256)) public transactionExecutorFeesEarned; // transactionExecutor => token => amount
 
     uint256 public count;
     mapping(uint256 => Structs.Bounty) public bounties;
@@ -63,6 +63,7 @@ contract Bounties is Ownable, VerifySignatures {
     event BountyClosed(uint256 indexed bountyId);
     event SetProtocolFee(uint256 protocolFee);
     event WithdrawFees(address[] _tokens);
+    event WithdrawClientReferrals(address[] _tokens);
     event SetMadSBT(address _madSBT, uint256 _collectionId, uint256 _profileId);
     event SetRewardNft(address _rewardNft);
     event SetPublicationAction(address _publicationAction);
@@ -345,6 +346,19 @@ contract Bounties is Ownable, VerifySignatures {
         emit BountyClosed(bountyId);
     }
 
+    /// @notice withdraws all accumulated client referral fees denominated in the specified tokens to the sender
+    function withdrawClientReferrals(address[] calldata _tokens) external {
+        for (uint256 i = 0; i < _tokens.length;) {
+            uint256 availableBal = transactionExecutorFeesEarned[_msgSender()][_tokens[i]];
+            transactionExecutorFeesEarned[_msgSender()][_tokens[i]] = 0;
+            IERC20(_tokens[i]).transfer(_msgSender(), availableBal);
+            unchecked {
+                ++i;
+            }
+        }
+        emit WithdrawClientReferrals(_tokens);
+    }
+
     /**
      * @notice calculates the fee to be paid on a token amount
      * @param amount token amount to calculate fee for
@@ -572,7 +586,8 @@ contract Bounties is Ownable, VerifySignatures {
         for (uint256 i = 0; i < data.length;) {
             _bidPayment(token, data[i].recipient, data[i].bid, data[i].revShare, data[i].bidderCollectionId, fee);
             finalProtocolFees -= _handleReferral(protocolFees, token, data[i].recipient, data[i].bid, bidTotal);
-            finalProtocolFees -= _handleClientReferral(protocolFees, data[i].transactionExecutor, data[i].bid, bidTotal);
+            finalProtocolFees -=
+                _handleClientReferral(protocolFees, data[i].transactionExecutor, bounty.token, data[i].bid, bidTotal);
             awardBadgePoints(sponsorCollectionId, data[i].recipient);
 
             unchecked {
@@ -763,15 +778,16 @@ contract Bounties is Ownable, VerifySignatures {
     function _handleClientReferral(
         uint256 protocolFeeAmount,
         address targetExecutor,
+        address token,
         uint256 bidAmount,
         uint256 bidTotal
     ) internal returns (uint256) {
         if (referralFee == 0 || !whitelistedTransactionExecutors[targetExecutor]) return 0;
 
-        uint256 protocolFeeShare = (bidAmount / bidTotal) * protocolFeeAmount;
-        uint256 referralFeeShare = (protocolFeeShare * referralFee) / 10_000;
+        uint256 protocolFeeShare = bidAmount * protocolFeeAmount / bidTotal;
+        uint256 referralFeeShare = protocolFeeShare * referralFee / 10_000;
 
-        transactionExecutorFeesEarned[targetExecutor] += referralFeeShare;
+        transactionExecutorFeesEarned[targetExecutor][token] += referralFeeShare;
 
         return referralFeeShare;
     }

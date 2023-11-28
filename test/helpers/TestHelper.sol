@@ -48,6 +48,8 @@ contract TestHelper is Test, Constants {
 
     address defaultSender = address(69);
 
+    address client = address(54321);
+
     uint256 public bidderPrivateKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80; // hardhat account 1
     uint256 public bidderPrivateKey2 = 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d; // hardhat account 2
     address public bidderAddress = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
@@ -738,7 +740,7 @@ contract TestHelper is Test, Constants {
 
     function createBidFromActionParam(address[] memory recipients, uint256[] memory bids, uint256[] memory revShares)
         internal
-        pure
+        view
         returns (Structs.BidFromAction[] memory)
     {
         Structs.BidFromAction[] memory data = new Structs.BidFromAction[](recipients.length);
@@ -746,7 +748,7 @@ contract TestHelper is Test, Constants {
         while (i < recipients.length) {
             data[i] = Structs.BidFromAction({
                 recipient: recipients[i],
-                transactionExecutor: address(0),
+                transactionExecutor: client,
                 bid: bids[i],
                 revShare: revShares[i],
                 bidderCollectionId: 0
