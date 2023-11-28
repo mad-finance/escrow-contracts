@@ -57,9 +57,10 @@ library Structs {
     }
 
     struct BidFromAction {
+        address recipient;
+        address transactionExecutor; // can be address(0) for pay only settlements
         uint256 bid;
         uint256 bidderCollectionId;
-        address recipient;
         uint256 revShare;
     }
 

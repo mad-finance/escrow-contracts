@@ -12,12 +12,13 @@ import "openzeppelin/token/ERC20/ERC20.sol";
 import "madfi-protocol/interfaces/ISuperToken.sol";
 
 import "../../src/Bounties.sol";
-import "../../src/RewardNft.sol";
+import {RewardNft} from "../../src/RewardNft.sol";
 import "../../src/libraries/Constants.sol";
 
 import "../../src/mocks/MockMadSBT.sol";
 import "../../src/mocks/MockRouter.sol";
 import "../../src/mocks/MockSuperToken.sol";
+import "../../src/mocks/MockReferralHandler.sol";
 
 interface ILensHubTest {
     function changeDelegatedExecutorsConfig(
@@ -35,6 +36,7 @@ contract TestHelper is Test, Constants {
     Bounties bounties;
     RewardNft rewardNft;
     MockMadSBT mockMadSBT;
+    MockReferralHandler mockReferralHandler;
 
     address swapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564; // uniswap swap router
 
@@ -45,6 +47,8 @@ contract TestHelper is Test, Constants {
     address lensHub = 0xC1E77eE73403B8a7478884915aA599932A677870;
 
     address defaultSender = address(69);
+
+    address client = address(54321);
 
     uint256 public bidderPrivateKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80; // hardhat account 1
     uint256 public bidderPrivateKey2 = 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d; // hardhat account 2
@@ -64,8 +68,9 @@ contract TestHelper is Test, Constants {
         vm.selectFork(polygonFork);
 
         mockMadSBT = new MockMadSBT(address(superUsdc));
+        mockReferralHandler = new MockReferralHandler();
 
-        bounties = new Bounties(lensHub, 0, 0, address(swapRouter));
+        bounties = new Bounties(lensHub, 0, 0, address(swapRouter), address(mockReferralHandler));
         rewardNft = new RewardNft(address(bounties));
 
         bounties.setMadSBT(address(mockMadSBT), 1, 1);
@@ -427,6 +432,7 @@ contract TestHelper is Test, Constants {
         input[0] = Structs.BidFromAction({
             bid: bidAmount1,
             recipient: bidderAddress,
+            transactionExecutor: address(0),
             revShare: revShare,
             bidderCollectionId: 0
         });
@@ -435,6 +441,7 @@ contract TestHelper is Test, Constants {
         input[1] = Structs.BidFromAction({
             bid: bidAmount2,
             recipient: bidderAddress2,
+            transactionExecutor: address(0),
             revShare: revShare,
             bidderCollectionId: 0
         });
@@ -733,7 +740,7 @@ contract TestHelper is Test, Constants {
 
     function createBidFromActionParam(address[] memory recipients, uint256[] memory bids, uint256[] memory revShares)
         internal
-        pure
+        view
         returns (Structs.BidFromAction[] memory)
     {
         Structs.BidFromAction[] memory data = new Structs.BidFromAction[](recipients.length);
@@ -741,6 +748,7 @@ contract TestHelper is Test, Constants {
         while (i < recipients.length) {
             data[i] = Structs.BidFromAction({
                 recipient: recipients[i],
+                transactionExecutor: client,
                 bid: bids[i],
                 revShare: revShares[i],
                 bidderCollectionId: 0

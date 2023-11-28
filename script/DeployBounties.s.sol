@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import "forge-std/Script.sol";
 import "../src/Bounties.sol";
-import "../src/RewardNft.sol";
+import {RewardNft} from "../src/RewardNft.sol";
 
 contract DeployBounties is Script {
     function setUp() public {}
@@ -23,7 +23,11 @@ contract DeployBounties is Script {
 
         address swapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
-        Bounties bounties = new Bounties(lensHub, protocolFee, lastBountyId, swapRouter);
+        address referralHandler = block.chainid == 137
+            ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // TODO: polygon
+            : 0x90B57ad79672DC8461E59709eB954D256934095d; // TODO: mumbai
+
+        Bounties bounties = new Bounties(lensHub, protocolFee, lastBountyId, swapRouter, referralHandler);
 
         address _madSBT = block.chainid == 137
             ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // TODO: polygon?
