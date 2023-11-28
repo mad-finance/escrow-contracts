@@ -169,7 +169,7 @@ contract BountiesTest is TestHelper {
     }
 
     function testSettleAndWithdrawFees() public {
-        uint256 protocolFee = 0;
+        uint256 protocolFee = 500;
         uint256 bountyAmount = 100_000_000;
         vm.startPrank(defaultSender);
         bounties = new Bounties(lensHub, protocolFee, 0, address(swapRouter), address(mockReferralHandler));
@@ -179,7 +179,7 @@ contract BountiesTest is TestHelper {
         setDelegatedExecutors(address(bounties));
 
         vm.startPrank(defaultSender);
-        helperMintApproveTokens(bountyAmount + ((500 * bountyAmount) / 10_000), defaultSender, usdc);
+        helperMintApproveTokens(bountyAmount + ((protocolFee * bountyAmount) / 10_000), defaultSender, usdc);
         uint256 beforeBal = usdc.balanceOf(defaultSender);
 
         uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount, 0);
@@ -198,7 +198,11 @@ contract BountiesTest is TestHelper {
         address[] memory tokens = new address[](1);
         tokens[0] = address(usdc);
         bounties.withdrawFees(tokens);
-        assertEq(usdc.balanceOf(defaultSender), ownerBeforeBal + feePaid, "Sponsor is not correct");
+        // owner should be able to withdraw half of the protocol fee
+        assertEq(usdc.balanceOf(defaultSender), ownerBeforeBal + feePaid / 2, "Sponsor is not correct");
+
+        // referral rewards - the other half of the protocol fee
+        assertEq(usdc.balanceOf(address(123123)), feePaid / 2, "Referral reward is not correct");
 
         vm.stopPrank();
     }
@@ -250,11 +254,12 @@ contract BountiesTest is TestHelper {
 
         assertEq(
             usdc.balanceOf(address(bounties)),
-            bountyAmount + feePaid,
+            bountyAmount + feePaid / 2, // half goes to referral
             "Bounties contract balance is not correct (before withdraw)"
         );
         bounties.withdrawFees(tokens);
-        assertEq(usdc.balanceOf(defaultSender), ownerBeforeBal + feePaid, "Sponsor balance is not correct");
+        // half of feePaid goes to referral
+        assertEq(usdc.balanceOf(defaultSender), ownerBeforeBal + feePaid / 2, "Sponsor balance is not correct");
         assertEq(
             usdc.balanceOf(address(bounties)), bountyAmount, "Bounties contract balance is not correct (after withdraw)"
         );

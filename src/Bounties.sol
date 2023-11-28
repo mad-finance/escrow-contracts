@@ -67,6 +67,8 @@ contract Bounties is Ownable, VerifySignatures {
     event SetRewardNft(address _rewardNft);
     event SetPublicationAction(address _publicationAction);
     event SetWhitelistedTransactionExecutor(address transactionExecutor, bool isWhitelisted);
+    event SetReferralHandler(address referralHandler);
+    event SetReferralFee(uint256 referralFee);
 
     /* ERRORS */
     error NotArbiter(address sender);
@@ -81,12 +83,14 @@ contract Bounties is Ownable, VerifySignatures {
     }
 
     /* CONSTRUCTOR */
-    constructor(address _lensHub, uint256 _protocolFee, uint256 _startId, address _swapRouter, address _referralHandler) Ownable() {
-        protocolFee = _protocolFee;
+    constructor(address _lensHub, uint256 _protocolFee, uint256 _startId, address _swapRouter, address _referralHandler)
+        Ownable()
+    {
+        lensHub = ILensProtocol(_lensHub);
+        setProtocolFee(_protocolFee);
         count = _startId;
         swapRouter = _swapRouter;
-        lensHub = ILensProtocol(_lensHub);
-        referralHandler = ISocialClubReferrals(_referralHandler);
+        setReferralHandler(_referralHandler);
     }
 
     /* PUBLIC FUNCTIONS */
@@ -360,7 +364,7 @@ contract Bounties is Ownable, VerifySignatures {
     /* ADMIN FUNCTIONS */
 
     /// @notice sets the protocol fee (in basis points). Close all outstanding bounties before calling
-    function setProtocolFee(uint256 _protocolFee) external onlyOwner {
+    function setProtocolFee(uint256 _protocolFee) public onlyOwner {
         protocolFee = _protocolFee;
         emit SetProtocolFee(_protocolFee);
     }
@@ -369,6 +373,7 @@ contract Bounties is Ownable, VerifySignatures {
     /// clients that submit a winning bid from the open action
     function setReferralFee(uint256 _referralFee) external onlyOwner {
         referralFee = _referralFee;
+        emit SetReferralFee(_referralFee);
     }
 
     /// @notice withdraws all accumulated fees denominated in the specified tokens to the owner
@@ -404,6 +409,15 @@ contract Bounties is Ownable, VerifySignatures {
     function setRewardNft(address _rewardNft) external onlyOwner {
         rewardNft = IRewardNft(_rewardNft);
         emit SetRewardNft(_rewardNft);
+    }
+
+    /**
+     * @notice sets the SocialClubReferrals contract
+     * @param _referralHandler the address of the SocialClubReferrals contract
+     */
+    function setReferralHandler(address _referralHandler) public onlyOwner {
+        referralHandler = ISocialClubReferrals(_referralHandler);
+        emit SetReferralHandler(_referralHandler);
     }
 
     /**
@@ -462,17 +476,18 @@ contract Bounties is Ownable, VerifySignatures {
         IERC20 token = IERC20(bounty.token);
         i = 0;
         uint256 sponsorCollectionId = bounty.sponsorCollectionId;
+        uint256 finalProtocolFees = protocolFees;
         while (i < data.length) {
             _bidPayment(token, data[i].recipient, data[i].bid, data[i].revShare, data[i].bidderCollectionId, fee);
             awardBadgePoints(sponsorCollectionId, data[i].recipient);
-            protocolFees -= _handleReferral(protocolFees, token, data[i].recipient, data[i].bid, bidTotal);
+            finalProtocolFees -= _handleReferral(protocolFees, token, data[i].recipient, data[i].bid, bidTotal);
 
             unchecked {
                 ++i;
             }
         }
 
-        feesEarned[bounty.token] += protocolFees;
+        feesEarned[bounty.token] += finalProtocolFees;
 
         emit BountyPayments(bountyId, bidTotal);
     }
@@ -512,9 +527,10 @@ contract Bounties is Ownable, VerifySignatures {
         IERC20 token = IERC20(bounty.token);
         i = 0;
         uint256 sponsorCollectionId = bounty.sponsorCollectionId;
+        uint256 finalProtocolFees = protocolFees;
         while (i < data.length) {
             _bidPayment(token, data[i].recipient, data[i].bid, data[i].revShare, data[i].bidderCollectionId, fee);
-            protocolFees -= _handleReferral(protocolFees, token, data[i].recipient, data[i].bid, bidTotal);
+            finalProtocolFees -= _handleReferral(protocolFees, token, data[i].recipient, data[i].bid, bidTotal);
             awardBadgePoints(sponsorCollectionId, data[i].recipient);
 
             unchecked {
@@ -522,7 +538,7 @@ contract Bounties is Ownable, VerifySignatures {
             }
         }
 
-        feesEarned[bounty.token] += protocolFees;
+        feesEarned[bounty.token] += finalProtocolFees;
 
         emit BountyPayments(bountyId, bidTotal);
     }
@@ -552,10 +568,11 @@ contract Bounties is Ownable, VerifySignatures {
 
         IERC20 token = IERC20(bounty.token);
         uint256 sponsorCollectionId = bounty.sponsorCollectionId;
+        uint256 finalProtocolFees = protocolFees;
         for (uint256 i = 0; i < data.length;) {
             _bidPayment(token, data[i].recipient, data[i].bid, data[i].revShare, data[i].bidderCollectionId, fee);
-            protocolFees -= _handleReferral(protocolFees, token, data[i].recipient, data[i].bid, bidTotal);
-            protocolFees -= _handleClientReferral(protocolFees, data[i].transactionExecutor, data[i].bid, bidTotal);
+            finalProtocolFees -= _handleReferral(protocolFees, token, data[i].recipient, data[i].bid, bidTotal);
+            finalProtocolFees -= _handleClientReferral(protocolFees, data[i].transactionExecutor, data[i].bid, bidTotal);
             awardBadgePoints(sponsorCollectionId, data[i].recipient);
 
             unchecked {
@@ -563,13 +580,13 @@ contract Bounties is Ownable, VerifySignatures {
             }
         }
 
-        feesEarned[bounty.token] += protocolFees;
+        feesEarned[bounty.token] += finalProtocolFees;
 
         emit BountyPayments(bountyId, bidTotal);
     }
 
     /**
-     * @dev disperse funds to recipients
+     * @dev disperse funds to recipients - for use with pay only ranked settle
      * @param bountyId bounty to settle
      * @param data array of data with recipients, amounts, and rev share
      * @param fee uniswap v3 fee in case of rev share swap
@@ -592,26 +609,29 @@ contract Bounties is Ownable, VerifySignatures {
             }
         }
 
-        uint256 newFees = calcFee(bidTotal);
-        uint256 total = newFees + bidTotal;
+        uint256 protocolFees = calcFee(bidTotal);
+        uint256 total = protocolFees + bidTotal;
         if (total > bounty.amount) {
             revert InvalidBidTotal(total);
         }
 
         bounties[bountyId].amount -= total;
-        feesEarned[bounty.token] += newFees;
 
         IERC20 token = IERC20(bounty.token);
         i = 0;
         uint256 sponsorCollectionId = bounty.sponsorCollectionId;
+        uint256 finalProtocolFees = protocolFees;
         while (i < data.length) {
             _bidPayment(token, data[i].recipient, data[i].bid, data[i].revShare, data[i].bidderCollectionId, fee);
+            finalProtocolFees -= _handleReferral(protocolFees, token, data[i].recipient, data[i].bid, bidTotal);
             awardBadgePoints(sponsorCollectionId, data[i].recipient);
 
             unchecked {
                 ++i;
             }
         }
+
+        feesEarned[bounty.token] += finalProtocolFees;
 
         emit BountyPayments(bountyId, bidTotal);
     }
@@ -720,7 +740,7 @@ contract Bounties is Ownable, VerifySignatures {
         uint256 bidAmount,
         uint256 bidTotal
     ) internal returns (uint256) {
-        uint256 protocolFeeShare = ((bidAmount / bidTotal) * protocolFeeAmount) / 10_000;
+        uint256 protocolFeeShare = bidAmount * protocolFeeAmount / bidTotal;
 
         (address referrer, uint256 referralAmount) =
             referralHandler.processBountyWithBadgeCreator(bidder, protocolFeeShare, address(token));
