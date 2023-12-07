@@ -44,7 +44,7 @@ contract TestHelper is Test, Constants {
     ERC20 wmatic = ERC20(0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889);
     ISuperToken superUsdc = ISuperToken(0x42bb40bF79730451B11f6De1CbA222F17b87Afd7);
 
-    address lensHub = 0xC1E77eE73403B8a7478884915aA599932A677870;
+    address lensHub = 0x4fbffF20302F3326B20052ab9C217C44F6480900;
 
     address defaultSender = address(69);
 
@@ -55,8 +55,8 @@ contract TestHelper is Test, Constants {
     address public bidderAddress = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
     address public bidderAddress2 = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
 
-    uint256 bidderProfileId = 236;
-    uint256 bidderProfileId2 = 819;
+    uint256 bidderProfileId = 78;
+    uint256 bidderProfileId2 = 79;
 
     uint256 bidAmount1 = 75_000;
     uint256 bidAmount2 = 25_000;
@@ -97,15 +97,15 @@ contract TestHelper is Test, Constants {
         Types.MirrorParams memory mirror = Types.MirrorParams({
             profileId: bidderProfileId,
             metadataURI: "ipfs://123",
-            pointedProfileId: 349,
-            pointedPubId: 0x04,
+            pointedProfileId: 0x1e,
+            pointedPubId: 0x5b,
             referrerProfileIds: new uint256[](0),
             referrerPubIds: new uint256[](0),
             referenceModuleData: ""
         });
 
         uint256[] memory idsOfProfilesToFollow = new uint256[](1);
-        idsOfProfilesToFollow[0] = 349;
+        idsOfProfilesToFollow[0] = 71;
         Structs.FollowParams memory follow = Structs.FollowParams({
             followerProfileId: bidderProfileId,
             idsOfProfilesToFollow: idsOfProfilesToFollow,
@@ -137,8 +137,8 @@ contract TestHelper is Test, Constants {
         Types.QuoteParams memory quote = Types.QuoteParams({
             profileId: bidderProfileId,
             contentURI: "ipfs://123",
-            pointedProfileId: 0xec,
-            pointedPubId: 0x08,
+            pointedProfileId: 0x1e,
+            pointedPubId: 0x5b,
             referrerProfileIds: new uint256[](0),
             referrerPubIds: new uint256[](0),
             referenceModuleData: "",
@@ -151,15 +151,15 @@ contract TestHelper is Test, Constants {
         Types.MirrorParams memory mirror = Types.MirrorParams({
             profileId: bidderProfileId,
             metadataURI: "ipfs://123",
-            pointedProfileId: 349,
-            pointedPubId: 0x04,
+            pointedProfileId: 0x1e,
+            pointedPubId: 0x5b,
             referrerProfileIds: new uint256[](0),
             referrerPubIds: new uint256[](0),
             referenceModuleData: ""
         });
 
         uint256[] memory idsOfProfilesToFollow = new uint256[](1);
-        idsOfProfilesToFollow[0] = 349;
+        idsOfProfilesToFollow[0] = 71;
         Structs.FollowParams memory follow = Structs.FollowParams({
             followerProfileId: bidderProfileId,
             idsOfProfilesToFollow: idsOfProfilesToFollow,
@@ -203,15 +203,15 @@ contract TestHelper is Test, Constants {
         Types.MirrorParams memory mirror1 = Types.MirrorParams({
             profileId: bidderProfileId,
             metadataURI: "ipfs://123",
-            pointedProfileId: 349,
-            pointedPubId: 0x04,
+            pointedProfileId: 0x1e,
+            pointedPubId: 0x5b,
             referrerProfileIds: new uint256[](0),
             referrerPubIds: new uint256[](0),
             referenceModuleData: ""
         });
 
         uint256[] memory idsOfProfilesToFollow1 = new uint256[](1);
-        idsOfProfilesToFollow1[0] = 349;
+        idsOfProfilesToFollow1[0] = 71;
         Structs.FollowParams memory follow1 = Structs.FollowParams({
             followerProfileId: bidderProfileId,
             idsOfProfilesToFollow: idsOfProfilesToFollow1,
@@ -243,15 +243,15 @@ contract TestHelper is Test, Constants {
         Types.MirrorParams memory mirror2 = Types.MirrorParams({
             profileId: bidderProfileId2,
             metadataURI: "ipfs://123",
-            pointedProfileId: 349,
-            pointedPubId: 0x04,
+            pointedProfileId: 0x1e,
+            pointedPubId: 0x5b,
             referrerProfileIds: new uint256[](0),
             referrerPubIds: new uint256[](0),
             referenceModuleData: ""
         });
 
         uint256[] memory idsOfProfilesToFollow2 = new uint256[](1);
-        idsOfProfilesToFollow2[0] = 349;
+        idsOfProfilesToFollow2[0] = 71;
         Structs.FollowParams memory follow2 = Structs.FollowParams({
             followerProfileId: bidderProfileId2,
             idsOfProfilesToFollow: idsOfProfilesToFollow2,
@@ -297,15 +297,15 @@ contract TestHelper is Test, Constants {
         Types.MirrorParams memory mirror1 = Types.MirrorParams({
             profileId: bidderProfileId,
             metadataURI: "ipfs://123",
-            pointedProfileId: 349,
-            pointedPubId: 0x04,
+            pointedProfileId: 0x1e,
+            pointedPubId: 0x5b,
             referrerProfileIds: new uint256[](0),
             referrerPubIds: new uint256[](0),
             referenceModuleData: ""
         });
 
         uint256[] memory idsOfProfilesToFollow1 = new uint256[](1);
-        idsOfProfilesToFollow1[0] = 349;
+        idsOfProfilesToFollow1[0] = 71;
         Structs.FollowParams memory follow1 = Structs.FollowParams({
             followerProfileId: bidderProfileId,
             idsOfProfilesToFollow: idsOfProfilesToFollow1,
@@ -335,15 +335,15 @@ contract TestHelper is Test, Constants {
         Types.MirrorParams memory mirror2 = Types.MirrorParams({
             profileId: bidderProfileId2,
             metadataURI: "ipfs://123",
-            pointedProfileId: 349,
-            pointedPubId: 0x04,
+            pointedProfileId: 0x1e,
+            pointedPubId: 0x5b,
             referrerProfileIds: new uint256[](0),
             referrerPubIds: new uint256[](0),
             referenceModuleData: ""
         });
 
         uint256[] memory idsOfProfilesToFollow2 = new uint256[](1);
-        idsOfProfilesToFollow2[0] = 349;
+        idsOfProfilesToFollow2[0] = 71;
         Structs.FollowParams memory follow2 = Structs.FollowParams({
             followerProfileId: bidderProfileId2,
             idsOfProfilesToFollow: idsOfProfilesToFollow2,
@@ -377,8 +377,8 @@ contract TestHelper is Test, Constants {
         Types.QuoteParams memory quote = Types.QuoteParams({
             profileId: bidderProfileId,
             contentURI: "ipfs://123",
-            pointedProfileId: 0xec,
-            pointedPubId: 0x08,
+            pointedProfileId: 0x1e,
+            pointedPubId: 0x5b,
             referrerProfileIds: new uint256[](0),
             referrerPubIds: new uint256[](0),
             referenceModuleData: "",
@@ -391,15 +391,15 @@ contract TestHelper is Test, Constants {
         Types.MirrorParams memory mirror1 = Types.MirrorParams({
             profileId: bidderProfileId,
             metadataURI: "ipfs://123",
-            pointedProfileId: 349,
-            pointedPubId: 0x04,
+            pointedProfileId: 0x1e,
+            pointedPubId: 0x5b,
             referrerProfileIds: new uint256[](0),
             referrerPubIds: new uint256[](0),
             referenceModuleData: ""
         });
 
         uint256[] memory idsOfProfilesToFollow1 = new uint256[](1);
-        idsOfProfilesToFollow1[0] = 349;
+        idsOfProfilesToFollow1[0] = 71;
         Structs.FollowParams memory follow1 = Structs.FollowParams({
             followerProfileId: bidderProfileId,
             idsOfProfilesToFollow: idsOfProfilesToFollow1,

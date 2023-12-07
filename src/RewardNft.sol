@@ -24,26 +24,26 @@ import "./interfaces/IRewardNft.sol";
  * @dev This contract is used to mint and track reward NFTs
  */
 contract RewardNft is Ownable, ERC1155Supply, IRewardNft {
-    address bounties;
+    mapping(address => bool) public isMinter;
     uint256 collectionsCount;
 
     mapping(uint256 => string) public tokenURIs;
 
     event CollectionCreated(uint256 indexed id, string tokenURI);
-    event BountiesSet(address indexed bounties);
+    event MinterSet(address indexed minter, bool isMinter);
 
     constructor(address _bounties) ERC1155("") Ownable() {
-        setBounties(_bounties);
+        setMinter(_bounties, true);
     }
 
-    function createCollection(string calldata _tokenUri) external override onlyBounties returns (uint256) {
+    function createCollection(string calldata _tokenUri) external override onlyMinter returns (uint256) {
         collectionsCount++; // start at 1
         tokenURIs[collectionsCount] = _tokenUri;
         emit CollectionCreated(collectionsCount, _tokenUri);
         return collectionsCount;
     }
 
-    function mint(address account, uint256 id, uint256 amount, bytes memory data) external override onlyBounties {
+    function mint(address account, uint256 id, uint256 amount, bytes memory data) external override onlyMinter {
         require(id <= collectionsCount, "Nonexistant collection");
         _mint(account, id, amount, data);
     }
@@ -52,13 +52,13 @@ contract RewardNft is Ownable, ERC1155Supply, IRewardNft {
         return tokenURIs[_id];
     }
 
-    function setBounties(address _bounties) public onlyOwner {
-        bounties = _bounties;
-        emit BountiesSet(_bounties);
+    function setMinter(address _address, bool _isMinter) public onlyOwner {
+        isMinter[_address] = _isMinter;
+        emit MinterSet(_address, _isMinter);
     }
 
-    modifier onlyBounties() {
-        require(msg.sender == bounties, "Only bounties");
+    modifier onlyMinter() {
+        require(isMinter[msg.sender], "Only minter");
         _;
     }
 }

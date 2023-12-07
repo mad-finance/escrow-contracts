@@ -16,4 +16,6 @@ contract MockRouter is ISwapRouter {
 
         return params.amountIn;
     }
+
+    function exactOutputSingle(ExactOutputSingleParams calldata params) external payable returns (uint256 amountIn) {}
 }
