@@ -162,10 +162,7 @@ contract BountiesTest is TestHelper {
 
         // check client referral reward
         {
-            address[] memory tokens = new address[](1);
-            tokens[0] = address(usdc);
             vm.prank(client);
-            bounties.withdrawClientReferrals(tokens);
             assertEq(
                 usdc.balanceOf(client),
                 protocolFee * (bidAmount1 + bidAmount2) / 10_000 / 2,

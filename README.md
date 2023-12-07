@@ -126,11 +126,11 @@ Same deal but created with `depositNft` and settled with `nftSettle`, `nftSettle
 
 ### Mumbai
 
-RevShare: 0x234E7282FC7f8233eFE174FD0c85d9C280C63b5E
+RevShare: 0xa789E6eBAc07e50b280D336359a4238C01073973
 
-Bounties: 0xFa5f9e598777A2787ab16f8B306Ceb21156DDC06
+Bounties: 0xA6E63f099253A0Ce7eDBeB69d6ebeea23eaAB938
 
-RewardNft: 0xF98A617772fC80EdD80612DEe8890797B17AAc03
+RewardNft: 0x208196d94B220ba172Aba256241B63816190E809
 
 ### Polygon
 
