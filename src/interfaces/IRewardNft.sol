@@ -3,7 +3,10 @@
 pragma solidity ^0.8.10;
 
 interface IRewardNft {
-    function createCollection(string calldata _tokenUri) external returns (uint256);
+    event CollectionCreated(uint256 indexed id, address creator);
+    event AdminSet(address indexed admin, bool isAdmin);
 
-    function mint(address account, uint256 id, uint256 amount, bytes memory data) external;
+    function createCollection(string calldata _tokenUri, address _creator) external returns (uint256);
+
+    function mint(address recipient, uint256 id, uint256 amount, bytes memory data) external;
 }

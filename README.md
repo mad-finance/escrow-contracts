@@ -61,6 +61,9 @@ forge script script/CreateNFTBounty.s.sol:CreateNFTBounty --rpc-url mumbai -vvvv
 
 # test test settle bounty
 forge script script/TestSettle.s.sol:TestSettle --rpc-url mumbai -vvvv
+
+# create a sticker pack and mint one to sender and one to a recipient
+forge script script/CreateSticker.s.sol:CreateSticker --rpc-url mumbai -vvvv
 ```
 
 ## Deployment
@@ -130,7 +133,7 @@ RevShare: 0x0946043fdD65a7049363e9da4c12DBFfC8819dB5
 
 Bounties: 0xf9984745089e63C230705045475D29e3ad4c3a6C
 
-RewardNft: 0x1285ccE24aC2b39A12f1941F1F5Ee74E81d9AE80
+RewardNft: 0xC7924C6Be44c9f663b181989c263b6A15434b3e8
 
 ### Polygon
 
