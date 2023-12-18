@@ -9,4 +9,6 @@ interface IRewardNft {
     function createCollection(string calldata _tokenUri, address _creator) external returns (uint256);
 
     function mint(address recipient, uint256 id, uint256 amount, bytes memory data) external;
+
+    function batchMint(address[] calldata recipients, uint256 id, bytes memory data) external;
 }

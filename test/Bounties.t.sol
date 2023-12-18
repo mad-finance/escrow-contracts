@@ -6,6 +6,26 @@ import "forge-std/Test.sol";
 import "./helpers/TestHelper.sol";
 
 contract BountiesTest is TestHelper {
+    function testStickerDrop() public {
+        vm.startPrank(defaultSender);
+        string memory tokenUri = "ipfs://bafkreiduigb4zpsumwhxd3hgslwkr4jgqa2cznzpmycxezyfm4ooasudfq";
+        uint256 id = rewardNft.createCollection(tokenUri, defaultSender);
+        rewardNft.mint(address(107), id, 1, "");
+        assertEq(rewardNft.balanceOf(address(107), id), 1);
+
+        address[] memory recipients = new address[](2);
+        recipients[0] = address(208);
+        recipients[1] = address(308);
+        rewardNft.batchMint(recipients, id, "");
+        assertEq(rewardNft.balanceOf(address(208), id), 1);
+        assertEq(rewardNft.balanceOf(address(308), id), 1);
+        vm.stopPrank();
+
+        vm.prank(address(9));
+        vm.expectRevert();
+        rewardNft.mint(address(9), id, 1, "");
+    }
+
     function testCreateBounty() public {
         vm.startPrank(defaultSender);
         uint256 bountyAmount = 123;
