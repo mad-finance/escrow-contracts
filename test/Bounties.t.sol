@@ -6,6 +6,22 @@ import "forge-std/Test.sol";
 import "./helpers/TestHelper.sol";
 
 contract BountiesTest is TestHelper {
+    function setUp() public {
+        polygonFork = vm.createFork(vm.envString("MUMBAI_RPC_URL"));
+        vm.selectFork(polygonFork);
+
+        mockMadSBT = new MockMadSBT(address(superUsdc));
+        mockReferralHandler = new MockReferralHandler();
+
+        bounties = new Bounties(lensHub, 0, 0, address(swapRouter), address(mockReferralHandler));
+        rewardNft = new RewardNft(address(bounties));
+
+        bounties.setMadSBT(address(mockMadSBT), 1, 1);
+        bounties.setRewardNft(address(rewardNft));
+
+        setDelegatedExecutors(address(bounties));
+    }
+
     function testCreateBounty() public {
         vm.startPrank(defaultSender);
         uint256 bountyAmount = 123;
