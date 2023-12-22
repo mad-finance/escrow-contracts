@@ -20,8 +20,21 @@ interface IMadSBTExtended is IMadSBT {
     ) external;
 }
 
-interface ISuperTokenExtended is ISuperToken {
-    function approveSubscription(address publisher, uint32 indexId) external;
+interface ISuperfluid {
+    function callAgreement(
+         address agreementClass,
+         bytes calldata callData,
+         bytes calldata userData
+     ) external returns(bytes memory returnedData);
+}
+
+interface IIDAV1 {
+    function approveSubscription(
+        address token,
+        address publisher,
+        uint32 indexId,
+        bytes calldata ctx
+    ) external returns(bytes memory newCtx);
 }
 
 contract SimulationTest is TestHelper, SimulationHelper {
@@ -32,7 +45,9 @@ contract SimulationTest is TestHelper, SimulationHelper {
     uint256 devPrivateKey; // to approve units
 
     IMadSBTExtended madSBT;
-    address latestMadSBT = 0x16d4EF45Ce129b6D7bE32E341984682b3050e7cb;
+    address constant latestMadSBT = 0x16d4EF45Ce129b6D7bE32E341984682b3050e7cb;
+    address constant sfHost = 0xEB796bdb90fFA0f28255275e16936D25d3418603;
+    address constant idaV1 = 0x804348D4960a61f2d5F9ce9103027A3E849E09b8;
 
     uint256 public constant GENESIS_BADGE_SUPPLY_CAP = 1_000;
     string constant GENESIS_BADGE_URI = "";
@@ -107,20 +122,36 @@ contract SimulationTest is TestHelper, SimulationHelper {
 
         // they must approve the IDA subscription before auto-receiving their rewards
         vm.startBroadcast(devPrivateKey);
-        console.log("with supertoken: %s", address(superToken));
-        console.log("with index: %d", uint32(genesisCollectionId));
-        ISuperTokenExtended(address(superToken)).approveSubscription(address(madSBT), uint32(genesisCollectionId));
+        ISuperfluid(sfHost).callAgreement(
+            idaV1,
+            abi.encodeCall(
+                IIDAV1.approveSubscription,
+                (
+                    address(superToken),
+                    address(madSBT),
+                    uint32(genesisCollectionId),
+                    new bytes(0) // ctx placeholder
+                )
+            ),
+            new bytes(0)
+        );
         vm.stopBroadcast();
+
+        address userWithExtraPoints = 0x28ff8e457feF9870B9d1529FE68Fbb95C3181f64; // or address of `devPrivateKey`
+        uint256 usdcxBalanceExtraBefore = superToken.balanceOf(userWithExtraPoints);
 
         vm.startBroadcast(deployerPrivateKey);
         superToken.approve(address(madSBT), amountToDistribute);
         madSBT.distributeRewards(genesisCollectionId, amountToDistribute);
         vm.stopBroadcast();
 
-        address userWithExtraPoints = 0x28ff8e457feF9870B9d1529FE68Fbb95C3181f64; // or address of `devPrivateKey`
         uint256 usdcxBalanceExtra = superToken.balanceOf(userWithExtraPoints);
+        uint256 usdcxDelta = usdcxBalanceExtra - usdcxBalanceExtraBefore;
 
-        console.log("usdcxBalanceExtra: %d", usdcxBalanceExtra);
-        assertGt(usdcxBalanceExtra, 0, "did not get the fusdcx....");
+        uint256 rewardUnits = madSBT.rewardUnitsOf(userWithExtraPoints, genesisCollectionId);
+        assertEq(rewardUnits, 1000);
+
+        // rewardUnits / totalRewardUnits => 1000 / 30000
+        assertEq(usdcxDelta, 3333333333333333000, "did not get new fusdcx....");
     }
 }
