@@ -73,7 +73,6 @@ contract TestHelper is Test, Constants {
         bounties = new Bounties(lensHub, 0, 0, address(swapRouter), address(mockReferralHandler));
         rewardNft = new RewardNft(address(bounties));
 
-        bounties.setMadSBT(address(mockMadSBT), 1, 1);
         bounties.setRewardNft(address(rewardNft));
 
         setDelegatedExecutors(address(bounties));

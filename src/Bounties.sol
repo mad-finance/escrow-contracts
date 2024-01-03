@@ -109,7 +109,9 @@ contract Bounties is Ownable, VerifySignatures {
 
         IERC20(token).transferFrom(_msgSender(), address(this), total);
 
-        madSBT.handleRewardsUpdate(_msgSender(), collectionId, BOUNTY_CREATE_REWARD_ENUM);
+        if (address(madSBT) != address(0)) {
+            madSBT.handleRewardsUpdate(_msgSender(), collectionId, BOUNTY_CREATE_REWARD_ENUM);
+        }
 
         emit BountyCreated(count, newBounty);
         return count;
@@ -132,7 +134,9 @@ contract Bounties is Ownable, VerifySignatures {
 
         IERC20(token).transferFrom(_msgSender(), address(this), totalAmount);
 
-        madSBT.handleRewardsUpdate(account, collectionId, BOUNTY_CREATE_REWARD_ENUM);
+        if (address(madSBT) != address(0)) {
+            madSBT.handleRewardsUpdate(account, collectionId, BOUNTY_CREATE_REWARD_ENUM);
+        }
 
         emit BountyCreated(count, newBounty);
         return count;
@@ -149,7 +153,9 @@ contract Bounties is Ownable, VerifySignatures {
             Structs.Bounty(0, nftCollectionId, _msgSender(), sponsorCollectionId, address(0));
         bounties[++count] = newBounty;
 
-        madSBT.handleRewardsUpdate(_msgSender(), collectionId, BOUNTY_CREATE_REWARD_ENUM);
+        if (address(madSBT) != address(0)) {
+            madSBT.handleRewardsUpdate(_msgSender(), collectionId, BOUNTY_CREATE_REWARD_ENUM);
+        }
 
         emit BountyCreated(count, newBounty);
         return count;
@@ -656,7 +662,7 @@ contract Bounties is Ownable, VerifySignatures {
         uint24 fee
     ) internal {
         uint256 revShareAmount;
-        if (revShare > 0 && bidderCollectionId != 0) {
+        if (address(madSBT) != address(0) && revShare > 0 && bidderCollectionId != 0) {
             // if user has a collection
             unchecked {
                 revShareAmount = revShare * bid / 100_00;
@@ -672,11 +678,13 @@ contract Bounties is Ownable, VerifySignatures {
      * @param recipient The address of the recipient.
      */
     function awardBadgePoints(uint256 sponsorCollectionId, address recipient) internal {
-        // MADFI BADGE POINTS
-        madSBT.handleRewardsUpdate(recipient, collectionId, BID_ACCEPT_REWARD_ENUM);
-        // SPONSOR BADGE POINTS
-        if (sponsorCollectionId != 0) {
-            madSBT.handleRewardsUpdate(recipient, sponsorCollectionId, BID_ACCEPT_REWARD_ENUM);
+        if (address(madSBT) != address(0)) {
+            // MADFI BADGE POINTS
+            madSBT.handleRewardsUpdate(recipient, collectionId, BID_ACCEPT_REWARD_ENUM);
+            // SPONSOR BADGE POINTS
+            if (sponsorCollectionId != 0) {
+                madSBT.handleRewardsUpdate(recipient, sponsorCollectionId, BID_ACCEPT_REWARD_ENUM);
+            }
         }
     }
 

@@ -355,6 +355,8 @@ contract BountiesTest is TestHelper {
     }
 
     function testRevShare() public {
+        bounties.setMadSBT(address(mockMadSBT), 1, 1);
+
         vm.startPrank(defaultSender);
         uint256 bountyAmount = 100_000_000;
         helperMintApproveTokens(bountyAmount, defaultSender, usdc);
@@ -377,6 +379,8 @@ contract BountiesTest is TestHelper {
     }
 
     function testRevShareWithSwap() public {
+        bounties.setMadSBT(address(mockMadSBT), 1, 1);
+
         vm.startPrank(defaultSender);
         uint256 bountyAmount = 100_000_000;
         helperMintApproveTokens(bountyAmount, defaultSender, wmatic);
