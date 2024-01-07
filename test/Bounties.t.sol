@@ -6,20 +6,24 @@ import "forge-std/Test.sol";
 import "./helpers/TestHelper.sol";
 
 contract BountiesTest is TestHelper {
-    function setUp() public {
-        polygonFork = vm.createFork(vm.envString("MUMBAI_RPC_URL"));
-        vm.selectFork(polygonFork);
+    function testStickerDrop() public {
+        vm.startPrank(defaultSender);
+        string memory tokenUri = "ipfs://bafkreiduigb4zpsumwhxd3hgslwkr4jgqa2cznzpmycxezyfm4ooasudfq";
+        uint256 id = rewardNft.createCollection(tokenUri, defaultSender);
+        rewardNft.mint(address(107), id, 1, "");
+        assertEq(rewardNft.balanceOf(address(107), id), 1);
 
-        mockMadSBT = new MockMadSBT(address(superUsdc));
-        mockReferralHandler = new MockReferralHandler();
+        address[] memory recipients = new address[](2);
+        recipients[0] = address(208);
+        recipients[1] = address(308);
+        rewardNft.batchMint(recipients, id, "");
+        assertEq(rewardNft.balanceOf(address(208), id), 1);
+        assertEq(rewardNft.balanceOf(address(308), id), 1);
+        vm.stopPrank();
 
-        bounties = new Bounties(lensHub, 0, 0, address(swapRouter), address(mockReferralHandler));
-        rewardNft = new RewardNft(address(bounties));
-
-        bounties.setMadSBT(address(mockMadSBT), 1, 1);
-        bounties.setRewardNft(address(rewardNft));
-
-        setDelegatedExecutors(address(bounties));
+        vm.prank(address(9));
+        vm.expectRevert();
+        rewardNft.mint(address(9), id, 1, "");
     }
 
     function testCreateBounty() public {
@@ -351,6 +355,8 @@ contract BountiesTest is TestHelper {
     }
 
     function testRevShare() public {
+        bounties.setMadSBT(address(mockMadSBT), 1, 1);
+
         vm.startPrank(defaultSender);
         uint256 bountyAmount = 100_000_000;
         helperMintApproveTokens(bountyAmount, defaultSender, usdc);
@@ -373,6 +379,8 @@ contract BountiesTest is TestHelper {
     }
 
     function testRevShareWithSwap() public {
+        bounties.setMadSBT(address(mockMadSBT), 1, 1);
+
         vm.startPrank(defaultSender);
         uint256 bountyAmount = 100_000_000;
         helperMintApproveTokens(bountyAmount, defaultSender, wmatic);

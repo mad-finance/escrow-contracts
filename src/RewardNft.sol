@@ -49,6 +49,14 @@ contract RewardNft is Ownable, ERC1155Supply, IRewardNft {
         _mint(recipient, id, amount, data);
     }
 
+    /// @notice mints a new NFT for each recipient, can only be called by the creator of the collection or the bounties contract (as an admin)
+    function batchMint(address[] calldata recipients, uint256 id, bytes memory data) external override onlyMinter(id) {
+        require(id <= collectionCount, "Nonexistant collection");
+        for (uint256 i = 0; i < recipients.length; i++) {
+            _mint(recipients[i], id, 1, data);
+        }
+    }
+
     /// @notice returns the URI for a given token ID
     function uri(uint256 _id) public view override(ERC1155) returns (string memory) {
         return tokenURIs[_id];

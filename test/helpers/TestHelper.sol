@@ -63,6 +63,21 @@ contract TestHelper is Test, Constants {
 
     uint24 uniswapFee = 500; // 0.05% uniswap pool fee
 
+    function setUp() public {
+        polygonFork = vm.createFork(vm.envString("MUMBAI_RPC_URL"));
+        vm.selectFork(polygonFork);
+
+        mockMadSBT = new MockMadSBT(address(superUsdc));
+        mockReferralHandler = new MockReferralHandler();
+
+        bounties = new Bounties(lensHub, 0, 0, address(swapRouter), address(mockReferralHandler));
+        rewardNft = new RewardNft(address(bounties));
+
+        bounties.setRewardNft(address(rewardNft));
+
+        setDelegatedExecutors(address(bounties));
+    }
+
     function helperMintApproveTokens(uint256 bountyAmount, address recipient, ERC20 token) public {
         deal(address(token), recipient, bountyAmount);
         token.approve(address(bounties), type(uint256).max);
