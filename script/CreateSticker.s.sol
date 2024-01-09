@@ -11,7 +11,7 @@ contract CreateSticker is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        RewardNft rewardNft = RewardNft(0xC85DBF3eEa4b112288dbDCD43C9B8f4DEb1eFb12);
+        RewardNft rewardNft = RewardNft(0x86d25a4C55F27679c7109E6FEc24c6D85ad28AC6);
 
         string memory tokenUri = "ipfs://bafkreiduigb4zpsumwhxd3hgslwkr4jgqa2cznzpmycxezyfm4ooasudfq";
         address creator = 0x7F0408bc8Dfe90C09072D8ccF3a1C544737BcDB6;
