@@ -45,20 +45,20 @@ contract SimulationTest is TestHelper, SimulationHelper {
     uint256 devPrivateKey; // to approve units
 
     IMadSBTExtended madSBT;
-    address constant latestMadSBT = 0x16d4EF45Ce129b6D7bE32E341984682b3050e7cb;
+    address constant latestMadSBT = 0x37aB71116E2A89dA7d27c918aBE6B9Bb8bEE5d12;
     address constant sfHost = 0xEB796bdb90fFA0f28255275e16936D25d3418603;
     address constant idaV1 = 0x804348D4960a61f2d5F9ce9103027A3E849E09b8;
 
-    uint256 public constant GENESIS_BADGE_SUPPLY_CAP = 1_000;
+    uint256 public constant GENESIS_BADGE_SUPPLY_CAP = 0; // no cap fr
     string constant GENESIS_BADGE_URI = "";
 
     bytes public basicCollectionCalldata;
 
-    function setUp() public {
-        polygonFork = vm.createFork(vm.envString("MUMBAI_RPC_URL"));
+    function setUp() public override {
+        super.setUp();
+
         deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         devPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
-        vm.selectFork(polygonFork);
 
         madSBT = IMadSBTExtended(latestMadSBT);
         initializeAddresses(); // 42 addresses get 500 points each

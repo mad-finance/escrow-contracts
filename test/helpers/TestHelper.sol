@@ -63,7 +63,7 @@ contract TestHelper is Test, Constants {
 
     uint24 uniswapFee = 500; // 0.05% uniswap pool fee
 
-    function setUp() public {
+    function setUp() public virtual {
         polygonFork = vm.createFork(vm.envString("MUMBAI_RPC_URL"));
         vm.selectFork(polygonFork);
 
