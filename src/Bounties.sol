@@ -148,7 +148,7 @@ contract Bounties is Ownable, VerifySignatures {
      * @param sponsorCollectionId collection ID of the sponsor
      */
     function depositNft(string calldata _uri, uint256 sponsorCollectionId) external returns (uint256 bountyId) {
-        uint256 nftCollectionId = rewardNft.createCollection(_uri, msg.sender);
+        uint256 nftCollectionId = rewardNft.createCollection(_uri, _msgSender());
         Structs.Bounty memory newBounty =
             Structs.Bounty(0, nftCollectionId, _msgSender(), sponsorCollectionId, address(0));
         bounties[++count] = newBounty;
