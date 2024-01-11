@@ -114,16 +114,16 @@ contract SimulationTest is TestHelper, SimulationHelper {
         uint256 rewardUnits1 = madSBT.rewardUnitsOf(bidderAddress, genesisCollectionId);
         uint256 rewardUnits2 = madSBT.rewardUnitsOf(bidderAddress2, genesisCollectionId);
 
-        // 4. settle a bounty payout with revshare
+        // 4. settle a bounty payout with no revshare
         Structs.RankedSettleInput[] memory input = createSettleDataTwoBidders(newBountyId, 0, 1);
         bounties.rankedSettle(newBountyId, input, uniswapFee);
         vm.stopBroadcast();
 
-        // 5. check balances of bidders
+        // 5. check balances of bidders - receive bid amount
         assertEq(usdc.balanceOf(bidderAddress), bidAmount1);
         assertEq(usdc.balanceOf(bidderAddress2), bidAmount2);
 
-        // 6. check points of bidders
+        // 6. check points of bidders - receive genesis collection points
         assertEq(madSBT.rewardUnitsOf(bidderAddress, genesisCollectionId), rewardUnits1 + 100);
         assertEq(madSBT.rewardUnitsOf(bidderAddress2, genesisCollectionId), rewardUnits2 + 100);
     }
