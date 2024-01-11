@@ -128,6 +128,55 @@ contract TestHelper is Test, Constants {
         return input;
     }
 
+    function createSettleDataWithRevshare(uint256 newBountyId, uint256 revShare, uint256 bidderCollectionId)
+        internal
+        view
+        returns (Structs.RankedSettleInput[] memory)
+    {
+        Types.PostParams memory post = Types.PostParams({
+            profileId: bidderProfileId,
+            contentURI: "ipfs://123",
+            actionModules: new address[](0),
+            actionModulesInitDatas: new bytes[](0),
+            referenceModule: address(0),
+            referenceModuleInitData: ""
+        });
+
+        Types.MirrorParams memory mirror = Types.MirrorParams({
+            profileId: bidderProfileId,
+            metadataURI: "ipfs://123",
+            pointedProfileId: 0x1e,
+            pointedPubId: 0x5b,
+            referrerProfileIds: new uint256[](0),
+            referrerPubIds: new uint256[](0),
+            referenceModuleData: ""
+        });
+
+        uint256[] memory idsOfProfilesToFollow = new uint256[](1);
+        idsOfProfilesToFollow[0] = 71;
+        Structs.FollowParams memory follow = Structs.FollowParams({
+            followerProfileId: bidderProfileId,
+            idsOfProfilesToFollow: idsOfProfilesToFollow,
+            followTokenIds: new uint256[](1),
+            datas: new bytes[](1)
+        });
+
+        Structs.RankedSettleInput[] memory input = new Structs.RankedSettleInput[](1);
+        input[0] = Structs.RankedSettleInput({
+            bid: bidAmount1,
+            bidderCollectionId: bidderCollectionId,
+            recipient: bidderAddress,
+            revShare: revShare,
+            signature: "",
+            postParams: post,
+            mirrorParams: mirror,
+            followParams: follow
+        });
+
+        input[0].signature = createSignatures(newBountyId, input)[0];
+        return input;
+    }
+
     function createQuoteSettleData(uint256 newBountyId)
         internal
         view
