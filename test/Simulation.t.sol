@@ -20,12 +20,20 @@ interface IMadSBTExtended is IMadSBT {
     ) external;
 }
 
+interface ISubscriptionHandler {
+    function creatorFees(
+        address creator
+    ) external view returns (int96 flowRate, int96 minSeconds, bool burnBadgeOnUnsubscribe );
+}
+
 interface ISuperfluid {
     function callAgreement(
          address agreementClass,
          bytes calldata callData,
          bytes calldata userData
-     ) external returns(bytes memory returnedData);
+     ) external returns (bytes memory returnedData);
+
+     function isAppJailed(address superApp) external view returns (bool);
 }
 
 interface IIDAV1 {
@@ -37,17 +45,37 @@ interface IIDAV1 {
     ) external returns(bytes memory newCtx);
 }
 
+interface ICFAV1 {
+    function createFlow(
+        address token,
+        address receiver,
+        int96 flowRate,
+        bytes calldata ctx
+    ) external returns(bytes memory newCtx);
+
+    function deleteFlow(
+        address token,
+        address sender,
+        address receiver,
+        bytes calldata ctx
+    ) external returns(bytes memory newCtx);
+}
+
 contract SimulationTest is TestHelper, SimulationHelper {
     uint256 deployerPrivateKey; // madfi wallet
     address deployer = 0x7F0408bc8Dfe90C09072D8ccF3a1C544737BcDB6;
     uint256 madfiProfileId = 209; // test/madfinance
     uint256 genesisCollectionId = 1;
     uint256 devPrivateKey; // to approve units
+    uint256 SECONDS_ONE_MONTH = 2_592_000;
 
     IMadSBTExtended madSBT;
+    ISubscriptionHandler subscriptionHandler;
     address constant latestMadSBT = 0x37aB71116E2A89dA7d27c918aBE6B9Bb8bEE5d12;
+    address constant latestSubscriptionHandler = 0x06e0A31095d611A6b075D358ae13c390759815E1;
     address constant sfHost = 0xEB796bdb90fFA0f28255275e16936D25d3418603;
     address constant idaV1 = 0x804348D4960a61f2d5F9ce9103027A3E849E09b8;
+    address constant cfaV1 = 0x49e565Ed1bdc17F3d220f72DF0857C26FA83F873;
 
     uint256 public constant GENESIS_BADGE_SUPPLY_CAP = 0; // no cap fr
     string constant GENESIS_BADGE_URI = "";
@@ -61,6 +89,7 @@ contract SimulationTest is TestHelper, SimulationHelper {
         devPrivateKey = vm.envUint("DEV_PRIVATE_KEY");
 
         madSBT = IMadSBTExtended(latestMadSBT);
+        subscriptionHandler = ISubscriptionHandler(latestSubscriptionHandler);
         initializeAddresses(); // 42 addresses get 500 points each
         initializeAddressesExtra(); // 18 addresses to get 500 more points
 
@@ -153,5 +182,105 @@ contract SimulationTest is TestHelper, SimulationHelper {
 
         // rewardUnits / totalRewardUnits => 1000 / 30000
         assertEq(usdcxDelta, 3333333333333333000, "did not get new fusdcx....");
+    }
+
+    // - subscribe to a creator
+    // - another account subscribes
+    // - simulate time passing
+    // - second unsubs
+    // - first unsubs
+    // - check not jailed
+    function testSubscriptions() public {
+        // send the bidders some supertokens
+        vm.startBroadcast(devPrivateKey);
+        IERC20 superToken = IERC20(address(madSBT.rewardsToken()));
+        superToken.transfer(bidderAddress, 20 ether);
+        superToken.transfer(bidderAddress2, 20 ether);
+        vm.stopBroadcast();
+
+        (int96 defaultFlowRate,,) = subscriptionHandler.creatorFees(deployer);
+        bytes memory userData = abi.encode(deployer, genesisCollectionId, false);
+        console.log("defaultFlowRate: %d", uint256(int256(defaultFlowRate)));
+
+        // bidder subscribes to deployer
+        vm.startBroadcast(bidderPrivateKey);
+        console.log("subbing...");
+        ISuperfluid(sfHost).callAgreement(
+            cfaV1,
+            abi.encodeCall(
+                ICFAV1.createFlow,
+                (
+                    address(superToken),
+                    deployer,
+                    defaultFlowRate,
+                    new bytes(0) // placeholder
+                )
+            ),
+            userData
+        );
+        vm.stopBroadcast();
+        console.log("bidder subscribed");
+
+        // bidder2 subscribes to deployer
+        vm.startBroadcast(bidderPrivateKey2);
+        console.log("subbing...");
+        ISuperfluid(sfHost).callAgreement(
+            cfaV1,
+            abi.encodeCall(
+                ICFAV1.createFlow,
+                (
+                    address(superToken),
+                    deployer,
+                    defaultFlowRate,
+                    new bytes(0) // placeholder
+                )
+            ),
+            userData
+        );
+        vm.stopBroadcast();
+        console.log("bidder2 subscribed");
+
+        // fast forward 1 month
+        skip(SECONDS_ONE_MONTH);
+
+        // bidder2 unsubscribes to deployer
+        vm.startBroadcast(bidderPrivateKey2);
+        console.log("un-subbing...");
+        ISuperfluid(sfHost).callAgreement(
+            cfaV1,
+            abi.encodeCall(
+                ICFAV1.deleteFlow,
+                (
+                    address(superToken),
+                    bidderAddress2,
+                    deployer,
+                    new bytes(0) // placeholder
+                )
+            ),
+            new bytes(0)
+        );
+        vm.stopBroadcast();
+        console.log("bidder2 unsubscribed");
+
+        // bidder unsubscribes to deployer
+        vm.startBroadcast(bidderPrivateKey);
+        console.log("un-subbing...");
+        ISuperfluid(sfHost).callAgreement(
+            cfaV1,
+            abi.encodeCall(
+                ICFAV1.deleteFlow,
+                (
+                    address(superToken),
+                    bidderAddress,
+                    deployer,
+                    new bytes(0) // placeholder
+                )
+            ),
+            new bytes(0)
+        );
+        vm.stopBroadcast();
+        console.log("bidder unsubscribed");
+
+        assertEq(ISuperfluid(sfHost).isAppJailed(latestSubscriptionHandler), false);
     }
 }
