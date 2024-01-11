@@ -199,7 +199,25 @@ contract SimulationTest is TestHelper, SimulationHelper {
         madSBT.mint(bidderAddress2, bidderCollectionId);
         assertEq(madSBT.totalRewardUnits(bidderCollectionId), 500, "someone didn't get their POINTS");
         assertEq(madSBT.rewardUnitsOf(bidderAddress2, bidderCollectionId), 500);
+        vm.stopBroadcast();
 
+        IERC20 superToken = IERC20(address(madSBT.rewardsToken()));
+
+        // bidder 2 must approve the IDA subscription before auto-receiving their rewards
+        vm.startBroadcast(bidderPrivateKey2);
+        ISuperfluid(sfHost).callAgreement(
+            idaV1,
+            abi.encodeCall(
+                IIDAV1.approveSubscription,
+                (
+                    address(superToken),
+                    address(madSBT),
+                    uint32(bidderCollectionId),
+                    new bytes(0) // ctx placeholder
+                )
+            ),
+            new bytes(0)
+        );
         vm.stopBroadcast();
 
         // 3. create a bounty
@@ -215,11 +233,6 @@ contract SimulationTest is TestHelper, SimulationHelper {
         // 5. check balances of bidder and bidder2 (revshare recipient)
         assertEq(usdc.balanceOf(bidderAddress), 90 * bidAmount1 / 100, "bidder didn't get the right amount of USDC");
 
-        // contract balance
-        IERC20 superToken = IERC20(address(madSBT.rewardsToken()));
-        assertEq(superToken.balanceOf(address(madSBT)), 10 * bidAmount1 / 100, "USDCX not transferred to madSBT");
-
-        // FIXME: bidder 2 - needs to claim?
         assertEq(superToken.balanceOf(bidderAddress2), 10 * bidAmount1 / 100, "bidder2 didn't get the right amount of USDCX");
 
         // 6. check points of bidder on sponsor badge
@@ -284,12 +297,6 @@ contract SimulationTest is TestHelper, SimulationHelper {
         assertEq(usdcxDelta, 3333333333333333000, "did not get new fusdcx....");
     }
 
-    // - subscribe to a creator
-    // - another account subscribes
-    // - simulate time passing
-    // - second unsubs
-    // - first unsubs
-    // - check not jailed
     function testSubscriptions() public {
         // send the bidders some supertokens
         vm.startBroadcast(devPrivateKey);
