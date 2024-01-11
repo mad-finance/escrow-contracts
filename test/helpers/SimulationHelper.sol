@@ -86,4 +86,9 @@ contract SimulationHelper {
         addAddressExtra(0xF62DE7f630BfA578214F95F217150b61b8d6A15f);
         addAddressExtra(0xff914CAeCc4B7e8113e4CA44D5735293205d01b9);
     }
+
+    function initializeAddressesBidders() public {
+        addAddress(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266);
+        addAddress(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
+    }
 }

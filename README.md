@@ -71,7 +71,7 @@ forge script script/CreateSticker.s.sol:CreateSticker --rpc-url mumbai -vvvv
 1. Be sure to set correct last bounty id for your chain id
 2. In ILensProtocol change the Types import to `import {Types} from '../../contracts/libraries/constants/Types.sol';` before deploying because otherwise polygonscan verification messes up.
 3. Run the deploy script
-4. Set contract as verified on MadSBT contract so rewards can be distributed
+4. Set contract as verified on MadSBT contract so rewards can be distributed (optional - only needed if you want to use MadSBT rewards)
 
 ## Bounties in depth
 
@@ -129,11 +129,11 @@ Same deal but created with `depositNft` and settled with `nftSettle`, `nftSettle
 
 ### Mumbai
 
-RevShare: 0xc9c990E06a1Dd7B9e36A40a2dB341ea96EaA5C9E
+RevShare: 0xa670F00913019cB0fd10F3597790143956Bda5D4
 
-Bounties: 0x0bb0770a3E6D355e1AbaC6f58CCA3051D11BFa4a
+Bounties: 0xa363AB8e2b4e09AF678Ded095011AbB0A801947b
 
-RewardNft: 0xC85DBF3eEa4b112288dbDCD43C9B8f4DEb1eFb12
+RewardNft: 0x86d25a4C55F27679c7109E6FEc24c6D85ad28AC6
 
 ### Polygon
 

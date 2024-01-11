@@ -25,16 +25,16 @@ contract DeployBounties is Script {
 
         address socialClubReferrals = block.chainid == 137
             ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // TODO: polygon
-            : 0x7C64D7d2E3028fd76aCBf875DaC4ADA83B90b84F; // TODO: mumbai
+            : 0x7f1fB3DcCB8bED821e639DcEBCCb69AeE1Bb7797; // TODO: mumbai
 
         Bounties bounties = new Bounties(lensHub, protocolFee, lastBountyId, swapRouter, socialClubReferrals);
 
         address _madSBT = block.chainid == 137
             ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // TODO: polygon?
-            : 0x0c437264f4a7799a3E70D4DD58B05511bf5F29a6; // mumbai
+            : 0x37aB71116E2A89dA7d27c918aBE6B9Bb8bEE5d12; // TODO: mumbai
         uint256 _collectionId = 1;
         uint256 _profileId = block.chainid == 137 ? 8640 : 209;
-        bounties.setMadSBT(_madSBT, _collectionId, _profileId);
+        bounties.setMadSBT(_madSBT, _collectionId, _profileId); // TODO: optional
 
         RewardNft rewardNft = new RewardNft(address(bounties));
 
