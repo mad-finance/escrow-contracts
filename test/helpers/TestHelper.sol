@@ -63,7 +63,7 @@ contract TestHelper is Test, Constants {
 
     uint24 uniswapFee = 500; // 0.05% uniswap pool fee
 
-    function setUp() public {
+    function setUp() public virtual {
         polygonFork = vm.createFork(vm.envString("MUMBAI_RPC_URL"));
         vm.selectFork(polygonFork);
 
@@ -118,6 +118,104 @@ contract TestHelper is Test, Constants {
             bidderCollectionId: 0,
             recipient: bidderAddress,
             revShare: 0,
+            signature: "",
+            postParams: post,
+            mirrorParams: mirror,
+            followParams: follow
+        });
+
+        input[0].signature = createSignatures(newBountyId, input)[0];
+        return input;
+    }
+
+    function createSettleData(uint256 newBountyId, uint256 bidAmount)
+        internal
+        view
+        returns (Structs.RankedSettleInput[] memory)
+    {
+        Types.PostParams memory post = Types.PostParams({
+            profileId: bidderProfileId,
+            contentURI: "ipfs://123",
+            actionModules: new address[](0),
+            actionModulesInitDatas: new bytes[](0),
+            referenceModule: address(0),
+            referenceModuleInitData: ""
+        });
+
+        Types.MirrorParams memory mirror = Types.MirrorParams({
+            profileId: bidderProfileId,
+            metadataURI: "ipfs://123",
+            pointedProfileId: 0x1e,
+            pointedPubId: 0x5b,
+            referrerProfileIds: new uint256[](0),
+            referrerPubIds: new uint256[](0),
+            referenceModuleData: ""
+        });
+
+        uint256[] memory idsOfProfilesToFollow = new uint256[](1);
+        idsOfProfilesToFollow[0] = 71;
+        Structs.FollowParams memory follow = Structs.FollowParams({
+            followerProfileId: bidderProfileId,
+            idsOfProfilesToFollow: idsOfProfilesToFollow,
+            followTokenIds: new uint256[](1),
+            datas: new bytes[](1)
+        });
+
+        Structs.RankedSettleInput[] memory input = new Structs.RankedSettleInput[](1);
+        input[0] = Structs.RankedSettleInput({
+            bid: bidAmount,
+            bidderCollectionId: 0,
+            recipient: bidderAddress,
+            revShare: 0,
+            signature: "",
+            postParams: post,
+            mirrorParams: mirror,
+            followParams: follow
+        });
+
+        input[0].signature = createSignatures(newBountyId, input)[0];
+        return input;
+    }
+
+    function createSettleDataWithRevshare(uint256 newBountyId, uint256 revShare, uint256 bidderCollectionId)
+        internal
+        view
+        returns (Structs.RankedSettleInput[] memory)
+    {
+        Types.PostParams memory post = Types.PostParams({
+            profileId: bidderProfileId,
+            contentURI: "ipfs://123",
+            actionModules: new address[](0),
+            actionModulesInitDatas: new bytes[](0),
+            referenceModule: address(0),
+            referenceModuleInitData: ""
+        });
+
+        Types.MirrorParams memory mirror = Types.MirrorParams({
+            profileId: bidderProfileId,
+            metadataURI: "ipfs://123",
+            pointedProfileId: 0x1e,
+            pointedPubId: 0x5b,
+            referrerProfileIds: new uint256[](0),
+            referrerPubIds: new uint256[](0),
+            referenceModuleData: ""
+        });
+
+        uint256[] memory idsOfProfilesToFollow = new uint256[](1);
+        idsOfProfilesToFollow[0] = 71;
+        Structs.FollowParams memory follow = Structs.FollowParams({
+            followerProfileId: bidderProfileId,
+            idsOfProfilesToFollow: idsOfProfilesToFollow,
+            followTokenIds: new uint256[](1),
+            datas: new bytes[](1)
+        });
+
+        Structs.RankedSettleInput[] memory input = new Structs.RankedSettleInput[](1);
+        input[0] = Structs.RankedSettleInput({
+            bid: bidAmount1,
+            bidderCollectionId: bidderCollectionId,
+            recipient: bidderAddress,
+            revShare: revShare,
             signature: "",
             postParams: post,
             mirrorParams: mirror,
@@ -771,5 +869,15 @@ contract TestHelper is Test, Constants {
         ILensHubTest(lensHub).changeDelegatedExecutorsConfig(bidderProfileId, executors, approvals);
         vm.prank(bidderAddress2);
         ILensHubTest(lensHub).changeDelegatedExecutorsConfig(bidderProfileId2, executors, approvals);
+    }
+
+    function validateLogEmitted(Vm.Log[] memory logs, bytes memory signature) internal pure returns (bool) {
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == keccak256(signature)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
