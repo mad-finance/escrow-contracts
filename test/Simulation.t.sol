@@ -22,6 +22,8 @@ interface IMadSBTExtended is IMadSBT {
     function setVerifiedAddress(address _minter, bool _verified) external;
 
     function owner() external returns(address);
+
+    function setReferralHandler(address _referralHandler) external;
 }
 
 interface ISubscriptionHandler {
@@ -87,6 +89,18 @@ interface ICFAV1 {
     ) external view returns (uint256 timestamp, int96 flowRate, uint256 deposit, uint256 owedDeposit);
 }
 
+interface IReferralHandler {
+    function setBountyConfig(
+        address _bountyContract,
+        address _publicationBountyAction,
+        uint256 _bountyStableAmountCap,
+        uint16 _bountyProtocolFeeShareBps,
+        uint8 _bountyReferralRewardEnum
+    ) external;
+
+    function setWhitelistedStable(address token, bool whitelisted) external;
+}
+
 contract SimulationTest is TestHelper, SimulationHelper {
     uint256 deployerPrivateKey; // madfi wallet
     address deployer = 0x7F0408bc8Dfe90C09072D8ccF3a1C544737BcDB6;
@@ -103,6 +117,8 @@ contract SimulationTest is TestHelper, SimulationHelper {
     address constant sfHost = 0xEB796bdb90fFA0f28255275e16936D25d3418603;
     address constant idaV1 = 0x804348D4960a61f2d5F9ce9103027A3E849E09b8;
     address constant cfaV1 = 0x49e565Ed1bdc17F3d220f72DF0857C26FA83F873;
+    address constant referralHandler = 0x7f1fB3DcCB8bED821e639DcEBCCb69AeE1Bb7797;
+    address constant publicationBountyAction = 0xb2A468791821200cfaea309433A48E115FBf333A;
 
     uint256 public constant GENESIS_BADGE_SUPPLY_CAP = 0; // no cap fr
     string constant GENESIS_BADGE_URI = "";
@@ -124,10 +140,17 @@ contract SimulationTest is TestHelper, SimulationHelper {
         basicCollectionCalldata = abi.encode(GENESIS_BADGE_SUPPLY_CAP, GENESIS_BADGE_URI, address(0));
 
         // setup bounties
-        vm.prank(madSBT.owner());
+        vm.startBroadcast(deployerPrivateKey);
         madSBT.setVerifiedAddress(address(bounties), true);
-        vm.prank(bounties.owner());
+        madSBT.setReferralHandler(referralHandler);
+        IReferralHandler(referralHandler).setBountyConfig(address(bounties), publicationBountyAction, 100e6, 2500, 3);
+        IReferralHandler(referralHandler).setWhitelistedStable(address(usdc), true);
+        vm.stopBroadcast();
+
+        vm.startPrank(bounties.owner());
         bounties.setMadSBT(address(madSBT), genesisCollectionId, 1);
+        bounties.setReferralHandler(referralHandler);
+        vm.stopPrank();
     }
 
     function testWithAirdroppedCollection() public {
@@ -484,6 +507,37 @@ contract SimulationTest is TestHelper, SimulationHelper {
         // flow rate between the superapp and the receiver should be 0
         (, int96 flowRate,,) = ICFAV1(cfaV1).getFlow(address(superToken), latestSubscriptionHandler, deployer);
         assertEq(flowRate, 0, "flow rate with the creator should now be 0");
+    }
+
+    function testBountyCreatorReferral() public {
+        // 1. create a collction with a referral
+        vm.startPrank(bidderAddress);
+        address referrer = address(32);
+        bytes memory collectionData  = abi.encode(GENESIS_BADGE_SUPPLY_CAP, GENESIS_BADGE_URI, referrer);
+        madSBT.createCollection(bidderAddress, bidderProfileId, collectionData);
+        vm.stopPrank();
+
+        // 2. create a bounty
+        vm.prank(bounties.owner());
+        bounties.setProtocolFee(10_00);
+
+        vm.startBroadcast(deployerPrivateKey);
+        uint bountyAmount = 100e18; // 100 usdc
+        uint bountyAmountWithFee = 110e18; // 110 usdc for fee
+        helperMintApproveTokens(bountyAmountWithFee, deployer, usdc);
+        uint256 newBountyId = bounties.deposit(address(usdc), bountyAmount, genesisCollectionId);
+
+        assertEq(usdc.balanceOf(referrer), 0, "referrer should have no balance");
+
+        // 3. settle a bounty payout with no revshare to bidder
+        uint bidAmount = 75e18;
+        Structs.RankedSettleInput[] memory input = createSettleData(newBountyId, bidAmount);
+        bounties.rankedSettle(newBountyId, input, uniswapFee);
+        vm.stopBroadcast();
+
+        // 4. referrer earns from protocol fee
+        assertEq(usdc.balanceOf(bidderAddress), bidAmount, "bidder didn't get the right amount of USDC");
+        assertEq(usdc.balanceOf(referrer), bidAmount * 250 / 100_00, "referrer didn't get the right amount of USDC");
     }
 
     function _createFlow(IERC20 superToken, uint256 senderPrivateKey, address sender, address receiver, uint256 collectionId) internal {
