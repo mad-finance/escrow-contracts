@@ -19,22 +19,24 @@ contract DeployBounties is Script {
         uint256 protocolFee = 10_00;
 
         // TODO: be sure to set correct last bounty id before each run
-        uint256 lastBountyId = block.chainid == 137 ? 44 : 129;
+        uint256 lastBountyId = block.chainid == 137 ? 46 : 129;
 
         address swapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
         address socialClubReferrals = block.chainid == 137
-            ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // TODO: polygon
-            : 0x7f1fB3DcCB8bED821e639DcEBCCb69AeE1Bb7797; // TODO: mumbai
+            ? 0x712bAa2E7b005d6c27902e427De9E329D6CfA4Be // polygon
+            : 0x7f1fB3DcCB8bED821e639DcEBCCb69AeE1Bb7797; // mumbai
 
         Bounties bounties = new Bounties(lensHub, protocolFee, lastBountyId, swapRouter, socialClubReferrals);
 
         address _madSBT = block.chainid == 137
-            ? 0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d // TODO: polygon?
+            ? 0x22209D6eAe6cEBA2d059ebfE67b67837BCC1b428 // TODO: polygon
             : 0x37aB71116E2A89dA7d27c918aBE6B9Bb8bEE5d12; // TODO: mumbai
         uint256 _collectionId = 1;
         uint256 _profileId = block.chainid == 137 ? 8640 : 209;
         bounties.setMadSBT(_madSBT, _collectionId, _profileId); // TODO: optional
+
+        bounties.setReferralHandler(socialClubReferrals);
 
         RewardNft rewardNft = new RewardNft(address(bounties));
 

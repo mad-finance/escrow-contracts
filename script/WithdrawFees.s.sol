@@ -12,8 +12,8 @@ contract WithdrawFees is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         address bountiesAddress = block.chainid == 137
-            ? 0x385B33C3127d5AF5F74fB4193a8dFd86D9a4A166 // Polygon
-            : 0xFa5f9e598777A2787ab16f8B306Ceb21156DDC06; // Mumbai
+            ? 0x606E8572e79852Cb0766fd95907FeE7b974e41Be // Polygon
+            : 0xa363AB8e2b4e09AF678Ded095011AbB0A801947b; // Mumbai
 
         address[] memory tokens = new address[](1);
         tokens[0] = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174; // USDC

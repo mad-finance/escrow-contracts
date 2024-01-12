@@ -16,8 +16,8 @@ contract TestSettle is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         address bountiesAddress = block.chainid == 137
-            ? 0x385B33C3127d5AF5F74fB4193a8dFd86D9a4A166
-            : 0xFa5f9e598777A2787ab16f8B306Ceb21156DDC06;
+            ? 0x606E8572e79852Cb0766fd95907FeE7b974e41Be
+            : 0xa363AB8e2b4e09AF678Ded095011AbB0A801947b;
 
         Bounties bounties = Bounties(bountiesAddress);
 
