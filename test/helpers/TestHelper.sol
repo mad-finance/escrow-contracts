@@ -821,4 +821,14 @@ contract TestHelper is Test, Constants {
         vm.prank(bidderAddress2);
         ILensHubTest(lensHub).changeDelegatedExecutorsConfig(bidderProfileId2, executors, approvals);
     }
+
+    function validateLogEmitted(Vm.Log[] memory logs, bytes memory signature) internal pure returns (bool) {
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == keccak256(signature)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

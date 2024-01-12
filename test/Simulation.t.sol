@@ -28,6 +28,15 @@ interface ISubscriptionHandler {
     function creatorFees(
         address creator
     ) external view returns (int96 flowRate, int96 minSeconds, bool burnBadgeOnUnsubscribe );
+
+    function activeSubscriptions(
+        address sender,
+        address receiver
+    ) external view returns (uint256 id, uint256 tokenId, uint64 wormholeSequence, bool active);
+
+    function setCreatorFee(address creator, int96 flowRate, int96 minSeconds, bool burnBadgeOnUnsubscribe) external;
+
+    function protocolFeePct() view external returns (int96);
 }
 
 interface ISuperfluid {
@@ -57,12 +66,25 @@ interface ICFAV1 {
         bytes calldata ctx
     ) external returns(bytes memory newCtx);
 
+    function updateFlow(
+        address token,
+        address receiver,
+        int96 flowRate,
+        bytes calldata ctx
+    ) external returns(bytes memory newCtx);
+
     function deleteFlow(
         address token,
         address sender,
         address receiver,
         bytes calldata ctx
     ) external returns(bytes memory newCtx);
+
+    function getFlow(
+        address token,
+        address sender,
+        address receiver
+    ) external view returns (uint256 timestamp, int96 flowRate, uint256 deposit, uint256 owedDeposit);
 }
 
 contract SimulationTest is TestHelper, SimulationHelper {
@@ -72,6 +94,7 @@ contract SimulationTest is TestHelper, SimulationHelper {
     uint256 genesisCollectionId = 1;
     uint256 devPrivateKey; // to approve units
     uint256 SECONDS_ONE_MONTH = 2_592_000;
+    uint256 SECONDS_ONE_DAY = 86_400;
 
     IMadSBTExtended madSBT;
     ISubscriptionHandler subscriptionHandler;
@@ -297,97 +320,217 @@ contract SimulationTest is TestHelper, SimulationHelper {
         assertEq(usdcxDelta, 3333333333333333000, "did not get new fusdcx....");
     }
 
-    function testSubscriptions() public {
-        // send the bidders some supertokens
+    function testSubscriptions_basic() public {
+        // setup: send the bidders some supertokens
         vm.startBroadcast(devPrivateKey);
         IERC20 superToken = IERC20(address(madSBT.rewardsToken()));
         superToken.transfer(bidderAddress, 20 ether);
         superToken.transfer(bidderAddress2, 20 ether);
         vm.stopBroadcast();
 
-        (int96 defaultFlowRate,,) = subscriptionHandler.creatorFees(deployer);
-        bytes memory userData = abi.encode(deployer, genesisCollectionId, false);
-        console.log("defaultFlowRate: %d", uint256(int256(defaultFlowRate)));
+        // 1. both bidders subscribe
+        _createFlow(superToken, bidderPrivateKey, address(0), deployer, genesisCollectionId);
+        _createFlow(superToken, bidderPrivateKey2, address(0), deployer, genesisCollectionId);
 
-        // bidder subscribes to deployer
-        vm.startBroadcast(bidderPrivateKey);
-        console.log("subbing...");
-        ISuperfluid(sfHost).callAgreement(
-            cfaV1,
-            abi.encodeCall(
-                ICFAV1.createFlow,
-                (
-                    address(superToken),
-                    deployer,
-                    defaultFlowRate,
-                    new bytes(0) // placeholder
-                )
-            ),
-            userData
-        );
-        vm.stopBroadcast();
-        console.log("bidder subscribed");
-
-        // bidder2 subscribes to deployer
-        vm.startBroadcast(bidderPrivateKey2);
-        console.log("subbing...");
-        ISuperfluid(sfHost).callAgreement(
-            cfaV1,
-            abi.encodeCall(
-                ICFAV1.createFlow,
-                (
-                    address(superToken),
-                    deployer,
-                    defaultFlowRate,
-                    new bytes(0) // placeholder
-                )
-            ),
-            userData
-        );
-        vm.stopBroadcast();
-        console.log("bidder2 subscribed");
-
-        // fast forward 1 month
+        // 2. fast forward 1 month
         skip(SECONDS_ONE_MONTH);
 
-        // bidder2 unsubscribes to deployer
-        vm.startBroadcast(bidderPrivateKey2);
-        console.log("un-subbing...");
-        ISuperfluid(sfHost).callAgreement(
-            cfaV1,
-            abi.encodeCall(
-                ICFAV1.deleteFlow,
-                (
-                    address(superToken),
-                    bidderAddress2,
-                    deployer,
-                    new bytes(0) // placeholder
-                )
-            ),
-            new bytes(0)
-        );
-        vm.stopBroadcast();
-        console.log("bidder2 unsubscribed");
+        // 3. bidder 2 unsubs
+        _deleteFlow(superToken, bidderPrivateKey2, bidderAddress2);
 
-        // bidder unsubscribes to deployer
-        vm.startBroadcast(bidderPrivateKey);
-        console.log("un-subbing...");
-        ISuperfluid(sfHost).callAgreement(
-            cfaV1,
-            abi.encodeCall(
-                ICFAV1.deleteFlow,
-                (
-                    address(superToken),
-                    bidderAddress,
-                    deployer,
-                    new bytes(0) // placeholder
-                )
-            ),
-            new bytes(0)
-        );
-        vm.stopBroadcast();
-        console.log("bidder unsubscribed");
+        // 4. bidder unsubs
+        vm.recordLogs();
+        _deleteFlow(superToken, bidderPrivateKey, bidderAddress);
 
+        // emits an event from our superapp, meaning we did not get jailed
+        assertEq(validateLogEmitted(vm.getRecordedLogs(), "StreamDeleted(address,address,uint256)"), true);
+
+        // not jailed
         assertEq(ISuperfluid(sfHost).isAppJailed(latestSubscriptionHandler), false);
+
+        // flow rate between the superapp and the receiver should be 0
+        (, int96 flowRate,,) = ICFAV1(cfaV1).getFlow(address(superToken), latestSubscriptionHandler, deployer);
+        assertEq(flowRate, 0, "flow rate with the creator should now be 0");
+    }
+
+    /// forge-config: default.fuzz.runs = 10
+    /// forge-config: default.invariant.fail-on-revert = false
+    function testSubscriptions_fuzz(
+        address subscriber1,
+        address subscriber2,
+        address subscriber3,
+        address subscriber4,
+        address subscriber5,
+        uint256 flowDurationSeconds,
+        uint256 deleteFlowGapsSeconds
+    ) public {
+        // subscription up to 2 months
+        vm.assume(flowDurationSeconds < SECONDS_ONE_MONTH * 2);
+        // gaps up to 10 days betweeen unsubs
+        vm.assume(deleteFlowGapsSeconds < SECONDS_ONE_DAY * 10);
+
+        // setup: send the subscribers some supertokens, enough to cover the `flowDurationSeconds`
+        vm.startBroadcast(devPrivateKey);
+        IERC20 superToken = IERC20(address(madSBT.rewardsToken()));
+        superToken.transfer(subscriber1, 25 ether);
+        superToken.transfer(subscriber2, 25 ether);
+        superToken.transfer(subscriber3, 25 ether);
+        superToken.transfer(subscriber4, 25 ether);
+        superToken.transfer(subscriber5, 25 ether);
+        vm.stopBroadcast();
+
+        // 1. all subscribe to the genesis badge creator
+        _createFlow(superToken, 0, subscriber1, deployer, genesisCollectionId);
+        _createFlow(superToken, 0, subscriber2, deployer, genesisCollectionId);
+        _createFlow(superToken, 0, subscriber3, deployer, genesisCollectionId);
+        _createFlow(superToken, 0, subscriber4, deployer, genesisCollectionId);
+        _createFlow(superToken, 0, subscriber5, deployer, genesisCollectionId);
+
+        // 2. fast forward variable amount of time
+        skip(flowDurationSeconds);
+
+        // 3. they sporadically unsubscribe
+        _deleteFlow(superToken, 0, subscriber1);
+        // not jailed
+        assertEq(ISuperfluid(sfHost).isAppJailed(latestSubscriptionHandler), false);
+        skip(deleteFlowGapsSeconds);
+        _deleteFlow(superToken, 0, subscriber2);
+        // not jailed
+        assertEq(ISuperfluid(sfHost).isAppJailed(latestSubscriptionHandler), false);
+        skip(deleteFlowGapsSeconds);
+        _deleteFlow(superToken, 0, subscriber3);
+        // not jailed
+        assertEq(ISuperfluid(sfHost).isAppJailed(latestSubscriptionHandler), false);
+        skip(deleteFlowGapsSeconds);
+        _deleteFlow(superToken, 0, subscriber4);
+        // not jailed
+        assertEq(ISuperfluid(sfHost).isAppJailed(latestSubscriptionHandler), false);
+        skip(deleteFlowGapsSeconds);
+
+        // 4. last one unsubs
+        vm.recordLogs();
+        _deleteFlow(superToken, 0, subscriber5);
+
+        // emits an event from our superapp, meaning we did not get jailed
+        assertEq(validateLogEmitted(vm.getRecordedLogs(), "StreamDeleted(address,address,uint256)"), true);
+
+        // not jailed
+        assertEq(ISuperfluid(sfHost).isAppJailed(latestSubscriptionHandler), false);
+
+        // flow rate between the superapp and the receiver should be 0
+        (, int96 flowRate,,) = ICFAV1(cfaV1).getFlow(address(superToken), latestSubscriptionHandler, deployer);
+        assertEq(flowRate, 0, "flow rate with the creator should now be 0");
+    }
+
+    /// forge-config: default.fuzz.runs = 10
+    /// forge-config: default.invariant.fail-on-revert = false
+    function testSubscriptionsMultiCreators_fuzz(
+        address subscriber1,
+        address subscriber2,
+        uint256 flowDurationSeconds,
+        uint256 deleteFlowGapsSeconds
+    ) public {
+        // subscription up to 2 months
+        vm.assume(flowDurationSeconds < SECONDS_ONE_MONTH * 2);
+        // gaps up to 10 days betweeen unsubs
+        vm.assume(deleteFlowGapsSeconds < SECONDS_ONE_DAY * 10);
+
+        // setup: send the subscribers some supertokens, enough to cover the `flowDurationSeconds`
+        vm.startBroadcast(devPrivateKey);
+        IERC20 superToken = IERC20(address(madSBT.rewardsToken()));
+        superToken.transfer(subscriber1, 25 ether);
+        superToken.transfer(subscriber2, 25 ether);
+        vm.stopBroadcast();
+
+        (int96 defaultFlowRate,,) = subscriptionHandler.creatorFees(deployer);
+        int96 includingFee = defaultFlowRate + (defaultFlowRate * subscriptionHandler.protocolFeePct() / 10000);
+
+        // setup: another creator makes their badge
+        vm.startPrank(bidderAddress);
+        uint256 otherCollectionId = madSBT.createCollection(bidderAddress, bidderProfileId, basicCollectionCalldata);
+        subscriptionHandler.setCreatorFee(bidderAddress, defaultFlowRate, 86400, false);
+        vm.stopPrank();
+
+        // 1. all subscribe to the genesis badge creator + the other one
+        _createFlow(superToken, 0, subscriber1, deployer, genesisCollectionId);
+        _createFlow(superToken, 0, subscriber2, deployer, genesisCollectionId);
+
+        (, int96 latestFlowRate,,) = ICFAV1(cfaV1).getFlow(address(superToken), subscriber1, latestSubscriptionHandler);
+        _updateFlow(superToken, 0, subscriber1, bidderAddress, otherCollectionId, latestFlowRate + includingFee, false);
+        _updateFlow(superToken, 0, subscriber2, bidderAddress, otherCollectionId, latestFlowRate + includingFee, false);
+
+        // 2. fast forward variable amount of time
+        skip(flowDurationSeconds);
+
+        // 3. they sporadically unsubscribe
+        _deleteFlow(superToken, 0, subscriber1);
+        // not jailed
+        assertEq(ISuperfluid(sfHost).isAppJailed(latestSubscriptionHandler), false);
+        skip(deleteFlowGapsSeconds);
+
+        // 4. last one deletes first via #updateFlow and then #deleteFlow
+        (, int96 totalFlowRate,,) = ICFAV1(cfaV1).getFlow(address(superToken), subscriber2, latestSubscriptionHandler);
+        _updateFlow(superToken, 0, subscriber2, bidderAddress, genesisCollectionId, totalFlowRate - includingFee, true);
+        skip(flowDurationSeconds);
+        vm.recordLogs();
+        _deleteFlow(superToken, 0, subscriber2);
+
+        // emits an event from our superapp, meaning we did not get jailed
+        assertEq(validateLogEmitted(vm.getRecordedLogs(), "StreamDeleted(address,address,uint256)"), true);
+
+        // not jailed
+        assertEq(ISuperfluid(sfHost).isAppJailed(latestSubscriptionHandler), false);
+
+        // flow rate between the superapp and the receiver should be 0
+        (, int96 flowRate,,) = ICFAV1(cfaV1).getFlow(address(superToken), latestSubscriptionHandler, deployer);
+        assertEq(flowRate, 0, "flow rate with the creator should now be 0");
+    }
+
+    function _createFlow(IERC20 superToken, uint256 senderPrivateKey, address sender, address receiver, uint256 collectionId) internal {
+        (int96 flowRate,,) = subscriptionHandler.creatorFees(receiver);
+        senderPrivateKey == 0 ? vm.prank(sender) : vm.startBroadcast(senderPrivateKey);
+        ISuperfluid(sfHost).callAgreement(
+            cfaV1,
+            abi.encodeCall(
+                ICFAV1.createFlow,
+                (address(superToken), latestSubscriptionHandler, flowRate, new bytes(0))
+            ),
+            abi.encode(receiver, collectionId, false)
+        );
+        if (senderPrivateKey != 0) vm.stopBroadcast();
+    }
+
+    function _updateFlow(
+        IERC20 superToken,
+        uint256 senderPrivateKey,
+        address sender,
+        address receiver,
+        uint256 collectionId,
+        int96 newFlowRate,
+        bool isCanceling
+    ) internal {
+        senderPrivateKey == 0 ? vm.prank(sender) : vm.startBroadcast(senderPrivateKey);
+        ISuperfluid(sfHost).callAgreement(
+            cfaV1,
+            abi.encodeCall(
+                ICFAV1.updateFlow,
+                (address(superToken), latestSubscriptionHandler, newFlowRate, new bytes(0))
+            ),
+            abi.encode(receiver, collectionId, isCanceling)
+        );
+        if (senderPrivateKey != 0) vm.stopBroadcast();
+    }
+
+    function _deleteFlow(IERC20 superToken, uint256 senderPrivateKey, address sender) internal {
+        senderPrivateKey == 0 ? vm.prank(sender) : vm.startBroadcast(senderPrivateKey);
+        ISuperfluid(sfHost).callAgreement(
+            cfaV1,
+            abi.encodeCall(
+                ICFAV1.deleteFlow,
+                (address(superToken), sender, latestSubscriptionHandler, new bytes(0))
+            ),
+            new bytes(0)
+        );
+        if (senderPrivateKey != 0) vm.stopBroadcast();
     }
 }
