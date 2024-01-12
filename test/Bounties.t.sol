@@ -178,11 +178,8 @@ contract BountiesTest is TestHelper {
             assertEq(usdc.balanceOf(bidderAddress2), expected2, "Bidder 2 balance is not correct");
             assertEq(usdc.balanceOf(defaultSender), expected3, "Sponsor balance is not correct");
             assertEq(usdc.balanceOf(openAction), 0, "Open Action balance is not correct");
-        }
 
-        // check client referral reward
-        {
-            vm.prank(client);
+            // check client referral reward
             assertEq(
                 usdc.balanceOf(client),
                 protocolFee * (bidAmount1 + bidAmount2) / 10_000 / 2,
